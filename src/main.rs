@@ -13,7 +13,7 @@ use std::{
 struct Solution {
     day: u32,
     solve: fn(&str) -> String,
-    test: fn() -> (bool, String),
+    test: fn() -> (String, String),
 }
 
 macro_rules! add_day {
@@ -79,7 +79,11 @@ fn print(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
             prefix,
             result,
             if args.timed {
-                format!(" in {}ms", duration.as_millis())
+                if duration < Duration::from_millis(1) {
+                    format!(" in {}us", duration.as_micros())
+                } else {
+                    format!(" in {}ms", duration.as_millis())
+                }
             } else {
                 String::default()
             }
@@ -126,12 +130,13 @@ async fn run(day: u32, args: &Args) -> Result<(String, Duration), Error> {
 
     // run test
     let test_start = Instant::now();
-    let (test_passed, test_result) = (solution.test)();
+    let (test_result, test_expected) = (solution.test)();
     let test_span = Instant::now() - test_start;
-    if !test_passed {
+    if test_result != test_expected {
         return Err(anyhow!(
-            "Test failed, got '{}'",
+            "Test failed, got '{}' expected '{}'",
             test_result,
+            test_expected,
         ));
     }
     if args.test_only {

@@ -2,26 +2,28 @@ pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a(input), part_b(input))
 }
 
-pub fn test() -> (bool, String) {
-    let part_a_test_input = "1abc2
+pub fn test() -> (String, String) {
+    (
+        format!(
+            "{}/{}",
+            part_a(
+                "1abc2
     pqr3stu8vwx
     a1b2c3d4e5f
-    treb7uchet";
-
-    let part_a = part_a(part_a_test_input);
-
-    let part_b_test_input = "two1nine
+    treb7uchet",
+            ),
+            part_b(
+                "two1nine
     eightwothree
     abcone2threexyz
     xtwone3four
     4nineeightseven2
     zoneight234
-    7pqrstsixteen";
-
-    let part_b = part_b(part_b_test_input);
-
-    let result = format!("{}/{}", part_a, part_b);
-    (result == "142/281", result)
+    7pqrstsixteen",
+            )
+        ),
+        "142/281".into(),
+    )
 }
 
 fn part_a(input: &str) -> u32 {
@@ -43,8 +45,7 @@ fn part_b(input: &str) -> u32 {
     input
         .split('\n')
         .filter(|line| !line.is_empty())
-        .map(|line| {
-            let mut line = line;
+        .map(|mut line| {
             let mut nums: Vec<u32> = vec![];
             while !line.is_empty() {
                 let digit_strs = [
