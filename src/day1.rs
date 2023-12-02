@@ -1,7 +1,9 @@
+#[tracing::instrument(skip(input), fields(day=1))]
 pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a(input), part_b(input))
 }
 
+#[tracing::instrument(fields(day=1))]
 pub fn test() -> (String, String) {
     (
         format!(
@@ -26,6 +28,7 @@ pub fn test() -> (String, String) {
     )
 }
 
+#[tracing::instrument(skip(input))]
 fn part_a(input: &str) -> u32 {
     input
         .lines()
@@ -40,10 +43,12 @@ fn part_a(input: &str) -> u32 {
         .sum()
 }
 
+#[tracing::instrument(skip(input))]
 fn part_b(input: &str) -> u32 {
     input
         .lines()
         .map(|mut line| {
+            tracing::debug!("line {}", line);
             let mut nums: Vec<u32> = vec![];
             while !line.is_empty() {
                 let digit_strs = [
@@ -58,6 +63,7 @@ fn part_b(input: &str) -> u32 {
                 }
                 line = &line[1..];
             }
+            tracing::debug!("nums {:?}", nums);
             nums.first().unwrap() * 10 + nums.last().unwrap()
         })
         .sum()

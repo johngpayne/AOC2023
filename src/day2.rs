@@ -1,4 +1,4 @@
-#[tracing::instrument(name = "day2::solve", skip(input))]
+#[tracing::instrument(skip(input), fields(day=2))]
 pub fn solve(input: &str) -> String {
     let games = input
         .lines()
@@ -25,6 +25,7 @@ pub fn solve(input: &str) -> String {
                     amounts
                 })
                 .collect::<Vec<_>>();
+            tracing::debug!("{} {:?}", game_index, game_turns);
             (game_index, game_turns)
         })
         .collect::<Vec<_>>();
@@ -59,6 +60,7 @@ pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a, part_b)
 }
 
+#[tracing::instrument]
 pub fn test() -> (String, String) {
     (
         solve(

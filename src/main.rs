@@ -2,7 +2,7 @@ use anyhow::{anyhow, Error};
 use chrono::{Datelike, FixedOffset, Utc};
 use clap::Parser;
 use futures::future::join_all;
-use inventory::{submit, collect};
+use inventory::{collect, submit};
 use reqwest::{Client, Method};
 use std::{
     fs::{create_dir_all, read_to_string, write},
@@ -32,10 +32,12 @@ macro_rules! add_day {
 /*
 // Template
 
+#[tracing::instrument(skip(input), fields(day=N))]
 pub fn solve(input: &str) -> String {
     format!("SOLVE({})", input)
 }
 
+#[tracing::instrument]
 pub fn test() -> (String, String) {
     (
         solve("TEST"),
@@ -67,14 +69,20 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    
+    let args = Args::parse();
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(if args.debug {
+            tracing::Level::DEBUG
+        } else {
+            tracing::Level::INFO
+        })
+        .with_target(false)
         .without_time()
         .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let args = Args::parse();
+    tracing::subscriber::set_global_default(subscriber)?;
+
     if args.all {
         let tasks = (0..25).map(|day| run(1 + day, &args)).collect::<Vec<_>>();
         let outputs = join_all(tasks).await;
@@ -89,12 +97,11 @@ async fn main() -> Result<(), Error> {
         };
         print(day, run(day, &args).await, &args);
     }
-
     Ok(())
 }
 
 fn print(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
-    let prefix = format!("Day {day}{} : ", if day < 10 { " " } else { "" });
+    let prefix = format!("\x1b[34mDay {day}{} \x1b[0m", if day < 10 { " " } else { "" });
     match result {
         Ok((result, duration)) => tracing::info!(
             "{}{}{}",
@@ -102,9 +109,9 @@ fn print(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
             result,
             if args.timed {
                 if duration < Duration::from_millis(1) {
-                    format!(" in {}us", duration.as_micros())
+                    format!("\x1b[93m ({}μs)\x1b[0m", duration.as_micros())
                 } else {
-                    format!(" in {}ms", duration.as_millis())
+                    format!("\x1b[93m ({}ms)\x1b[0m", duration.as_millis())
                 }
             } else {
                 String::default()
@@ -153,24 +160,25 @@ async fn run(day: u32, args: &Args) -> Result<(String, Duration), Error> {
     // run test
     let test_start = Instant::now();
     let (test_result, test_expected) = (solution.test)();
-    let test_span = Instant::now() - test_start;
+    let test_duration = Instant::now() - test_start;
+
     if test_result != test_expected {
         return Err(anyhow!(
-            "Test failed, got '{}' expected '{}'",
+            "failed, got '{}' expected '{}'",
             test_result,
             test_expected,
         ));
     }
     if args.test_only {
-        return Ok((test_result, test_span));
+        return Ok(("passed".into(), test_duration));
     }
 
     // get real data and run
     let data = get_data(day, args.year).await?;
     let start = Instant::now();
     let result = (solution.solve)(&data);
-    let span = Instant::now() - start;
-    Ok((result, span))
+    let duration = Instant::now() - start;
+    Ok((result, duration))
 }
 
 fn get_today() -> Result<u32, Error> {
@@ -188,5 +196,5 @@ fn get_solution(day: u32) -> Result<&'static Solution, Error> {
             return Ok(solution);
         }
     }
-    Err(anyhow!("Day {day} not defined"))
+    Err(anyhow!("not implemented"))
 }
