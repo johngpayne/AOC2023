@@ -2,7 +2,7 @@ use anyhow::{anyhow, Error};
 use chrono::{Datelike, FixedOffset, Utc};
 use clap::Parser;
 use futures::future::join_all;
-use inventory::*;
+use inventory::{submit, collect};
 use reqwest::{Client, Method};
 use std::{
     fs::{create_dir_all, read_to_string, write},
@@ -29,7 +29,23 @@ macro_rules! add_day {
     };
 }
 
+/*
+// Template
+
+pub fn solve(input: &str) -> String {
+    format!("SOLVE({})", input)
+}
+
+pub fn test() -> (String, String) {
+    (
+        solve("TEST"),
+        "SOLUTION".into(),
+    )
+}
+*/
+
 add_day!(1, day1);
+add_day!(2, day2);
 
 collect!(Solution);
 
@@ -51,9 +67,15 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(tracing::Level::DEBUG)
+        .without_time()
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
     let args = Args::parse();
     if args.all {
-        println!("Running all days:");
         let tasks = (0..25).map(|day| run(1 + day, &args)).collect::<Vec<_>>();
         let outputs = join_all(tasks).await;
         for (index, output) in outputs.into_iter().enumerate() {
@@ -74,7 +96,7 @@ async fn main() -> Result<(), Error> {
 fn print(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
     let prefix = format!("Day {day}{} : ", if day < 10 { " " } else { "" });
     match result {
-        Ok((result, duration)) => println!(
+        Ok((result, duration)) => tracing::info!(
             "{}{}{}",
             prefix,
             result,
@@ -88,7 +110,7 @@ fn print(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
                 String::default()
             }
         ),
-        Err(err) => println!("{}{}", prefix, err),
+        Err(err) => tracing::error!("{}{}", prefix, err),
     }
 }
 
