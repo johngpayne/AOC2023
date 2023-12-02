@@ -28,8 +28,7 @@ pub fn test() -> (String, String) {
 
 fn part_a(input: &str) -> u32 {
     input
-        .split('\n')
-        .filter(|line| !line.is_empty())
+        .lines()
         .map(|line| {
             let nums = line
                 .chars()
@@ -43,8 +42,7 @@ fn part_a(input: &str) -> u32 {
 
 fn part_b(input: &str) -> u32 {
     input
-        .split('\n')
-        .filter(|line| !line.is_empty())
+        .lines()
         .map(|mut line| {
             let mut nums: Vec<u32> = vec![];
             while !line.is_empty() {
