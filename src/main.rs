@@ -147,7 +147,7 @@ async fn get_data(day: u32, year: u32) -> Result<String, Error> {
 
     // cache for next time
     let path = get_cache_path(day, year);
-    let _ = create_dir_all(path.parent().unwrap());
+    create_dir_all(path.parent().unwrap())?;
     write(path, text.clone())?;
 
     Ok(text)
