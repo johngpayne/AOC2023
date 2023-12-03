@@ -11,11 +11,13 @@ impl Num {
     fn new(value: u32, cursor: IVec2) -> Self {
         Num { value, cursor }
     }
+    // x of start of number
     fn start_x(&self) -> i32 {
         self.cursor.x - (1 + self.value.checked_ilog10().unwrap_or(0) as i32)
     }
+    // x to the right of the number
     fn end_x(&self) -> i32 {
-        self.cursor.x - 1
+        self.cursor.x
     }
 }
 
@@ -64,7 +66,7 @@ pub fn solve(input: &str) -> String {
 
     // put all nums into the symbol's vec
     nums.iter().for_each(|num| {
-        (num.start_x() - 1..=num.end_x() + 1).for_each(|x| {
+        (num.start_x() - 1..num.end_x() + 1).for_each(|x| {
             (num.cursor.y - 1..=num.cursor.y + 1).for_each(|y| {
                 if let Some(Symbol { ref mut near_nums, .. }) = symbols.get_mut(&ivec2(x, y)) {
                     near_nums.push(num.value);
