@@ -7,10 +7,6 @@ struct Num {
 }
 
 impl Num {
-    // cursor is coord of the char just after the number
-    fn new(value: u32, cursor: IVec2) -> Self {
-        Num { value, cursor }
-    }
     // x of start of number
     fn start_x(&self) -> i32 {
         self.cursor.x - (1 + self.value.checked_ilog10().unwrap_or(0) as i32)
@@ -44,8 +40,8 @@ pub fn solve(input: &str) -> String {
                     };
                 } else {
                     let cursor = ivec2(x as i32, y as i32);
-                    if let Some(acc_value) = acc {
-                        nums.push(Num::new(acc_value, cursor));
+                    if let Some(value) = acc {
+                        nums.push(Num { value, cursor });
                         acc = None;
                     }
                     if ch != '.' {
@@ -59,8 +55,11 @@ pub fn solve(input: &str) -> String {
                     }
                 }
             });
-            if let Some(acc_value) = acc {
-                nums.push(Num::new(acc_value, ivec2(line.len() as i32, y as i32)));
+            if let Some(value) = acc {
+                nums.push(Num {
+                    value,
+                    cursor: ivec2(line.len() as i32, y as i32),
+                });
             }
         });
 
@@ -68,14 +67,19 @@ pub fn solve(input: &str) -> String {
     nums.iter().for_each(|num| {
         (num.start_x() - 1..num.end_x() + 1).for_each(|x| {
             (num.cursor.y - 1..=num.cursor.y + 1).for_each(|y| {
-                if let Some(Symbol { ref mut near_nums, .. }) = symbols.get_mut(&ivec2(x, y)) {
+                if let Some(Symbol {
+                    ref mut near_nums, ..
+                }) = symbols.get_mut(&ivec2(x, y))
+                {
                     near_nums.push(num.value);
                 }
             })
         })
     });
 
-    let part_a = symbols.values().map(|symbol| symbol.near_nums.iter().sum::<u32>())
+    let part_a = symbols
+        .values()
+        .map(|symbol| symbol.near_nums.iter().sum::<u32>())
         .sum::<u32>();
 
     let part_b = symbols
