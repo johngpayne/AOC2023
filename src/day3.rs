@@ -1,11 +1,33 @@
 use glam::{ivec2, IVec2};
 use rustc_hash::FxHashMap;
 
+struct Num {
+    value: u32,
+    cursor: IVec2,
+}
+
+impl Num {
+    // cursor is coord of the char just after the number
+    fn new(value: u32, cursor: IVec2) -> Self {
+        Num { value, cursor }
+    }
+    fn start_x(&self) -> i32 {
+        self.cursor.x - (1 + self.value.checked_ilog10().unwrap_or(0) as i32)
+    }
+    fn end_x(&self) -> i32 {
+        self.cursor.x - 1
+    }
+}
+
+struct Symbol {
+    ch: char,
+    near_nums: Vec<u32>,
+}
+
 #[tracing::instrument(skip(input), fields(day = 3))]
 pub fn solve(input: &str) -> String {
-    let num_digits = |num: u32| num.checked_ilog10().unwrap_or(0) as i32 + 1;
-    let mut symbols: FxHashMap<IVec2, char> = FxHashMap::default();
-    let mut nums: Vec<(IVec2, u32)> = vec![];
+    let mut symbols: FxHashMap<IVec2, Symbol> = FxHashMap::default();
+    let mut nums: Vec<Num> = vec![];
     input
         .lines()
         .map(|line| line.trim())
@@ -19,45 +41,45 @@ pub fn solve(input: &str) -> String {
                         Some(acc_value) => Some(acc_value * 10 + digit),
                     };
                 } else {
-                    let coord = ivec2(x as i32, y as i32);
+                    let cursor = ivec2(x as i32, y as i32);
                     if let Some(acc_value) = acc {
-                        nums.push((coord, acc_value));
+                        nums.push(Num::new(acc_value, cursor));
                         acc = None;
                     }
                     if ch != '.' {
-                        symbols.insert(coord, ch);
+                        symbols.insert(
+                            cursor,
+                            Symbol {
+                                ch,
+                                near_nums: vec![],
+                            },
+                        );
                     }
                 }
             });
             if let Some(acc_value) = acc {
-                nums.push((ivec2(line.len() as i32, y as i32), acc_value));
+                nums.push(Num::new(acc_value, ivec2(line.len() as i32, y as i32)));
             }
         });
 
-    let part_a = nums
-        .iter()
-        .filter(|(coord, num)| {
-            (-1 - num_digits(*num)..1).any(|xo| {
-                (-1..=1).any(|yo| symbols.contains_key(&ivec2(coord.x + xo, coord.y + yo)))
+    // put all nums into the symbol's vec
+    nums.iter().for_each(|num| {
+        (num.start_x() - 1..=num.end_x() + 1).for_each(|x| {
+            (num.cursor.y - 1..=num.cursor.y + 1).for_each(|y| {
+                if let Some(Symbol { ref mut near_nums, .. }) = symbols.get_mut(&ivec2(x, y)) {
+                    near_nums.push(num.value);
+                }
             })
         })
-        .map(|(_, num)| num)
+    });
+
+    let part_a = symbols.values().map(|symbol| symbol.near_nums.iter().sum::<u32>())
         .sum::<u32>();
 
     let part_b = symbols
-        .iter()
-        .filter(|(_, &ch)| ch == '*')
-        .map(|(&gear_coord, _)| {
-            nums.iter()
-                .filter(|&&(num_coord, num)| {
-                    let offset = num_coord - gear_coord;
-                    offset.y.abs() <= 1 && offset.x <= num_digits(num) + 1 && offset.x >= 0
-                })
-                .map(|&(_, num)| num)
-                .collect::<Vec<_>>()
-        })
-        .filter(|gear_nums| gear_nums.len() == 2)
-        .map(|gear_nums| gear_nums.iter().product::<u32>())
+        .values()
+        .filter(|symbol| symbol.ch == '*' && symbol.near_nums.len() == 2)
+        .map(|symbol| symbol.near_nums.iter().product::<u32>())
         .sum::<u32>();
 
     format!("{}/{}", part_a, part_b)
