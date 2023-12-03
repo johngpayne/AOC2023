@@ -18,8 +18,8 @@ pub fn solve(input: &str) -> String {
                         let part_num = part_split.next().unwrap().parse::<u32>().unwrap();
                         let part_type = part_split.next().unwrap();
                         amounts[["red", "green", "blue"]
-                            .into_iter()
-                            .position(|cube_type| cube_type == part_type)
+                            .iter()
+                            .position(|&cube_type| cube_type == part_type)
                             .unwrap()] = part_num;
                     });
                     amounts
