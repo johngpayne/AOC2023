@@ -48,6 +48,7 @@ pub fn test() -> (String, String) {
 
 add_day!(1, day1);
 add_day!(2, day2);
+add_day!(3, day3);
 
 collect!(Solution);
 
@@ -164,7 +165,7 @@ async fn run(day: u32, args: &Args) -> Result<(String, Duration), Error> {
 
     if test_result != test_expected {
         return Err(anyhow!(
-            "failed, got '{}' expected '{}'",
+            "failed test, got '{}' expected '{}'",
             test_result,
             test_expected,
         ));
