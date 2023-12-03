@@ -88,7 +88,7 @@ async fn main() -> Result<(), Error> {
         let tasks = (0..25).map(|day| run(1 + day, &args)).collect::<Vec<_>>();
         let outputs = join_all(tasks).await;
         for (index, output) in outputs.into_iter().enumerate() {
-            print(1 + index as u32, output, &args);
+            write_output(1 + index as u32, output, &args);
         }
     } else {
         let day = if let Some(day) = args.day {
@@ -96,12 +96,12 @@ async fn main() -> Result<(), Error> {
         } else {
             get_today()?
         };
-        print(day, run(day, &args).await, &args);
+        write_output(day, run(day, &args).await, &args);
     }
     Ok(())
 }
 
-fn print(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
+fn write_output(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
     let prefix = format!("\x1b[34mDay {day}{} \x1b[0m", if day < 10 { " " } else { "" });
     match result {
         Ok((result, duration)) => tracing::info!(
