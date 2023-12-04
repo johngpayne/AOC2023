@@ -79,7 +79,7 @@ pub fn solve(input: &str) -> String {
 
     let part_a = symbols
         .values()
-        .map(|symbol| symbol.near_nums.iter().sum::<u32>())
+        .flat_map(|symbol| symbol.near_nums.iter())
         .sum::<u32>();
 
     let part_b = symbols
