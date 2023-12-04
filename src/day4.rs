@@ -1,41 +1,46 @@
 #[tracing::instrument(skip(input), fields(day = 4))]
 pub fn solve(input: &str) -> String {
-    let mut extra_cards: Vec<(u32, u32)> = vec![];
+    let (part_a, part_b, _) = input.lines().fold(
+        (0u32, 0u32, Vec::<(u32, u32)>::default()),
+        |(part_a, part_b, mut extra_cards), line| {
+            let mut line_split = line.split(": ");
+            let mut card_parts = line_split.nth(1).unwrap().split("| ");
+            let winning_nums = card_parts
+                .next()
+                .unwrap()
+                .split_ascii_whitespace()
+                .map(|s| s.parse::<u32>().unwrap());
+            let held_nums = card_parts
+                .next()
+                .unwrap()
+                .split_ascii_whitespace()
+                .map(|s| s.parse::<u32>().unwrap())
+                .collect::<Vec<_>>();
+            let matches = winning_nums
+                .filter(|winning_num| held_nums.contains(winning_num))
+                .count() as u32;
 
-    let (part_a, part_b) = input.lines().fold((0u32, 0u32), |(part_a, part_b), line| {
-        let mut line_split = line.split(": ");
-        let mut card_parts = line_split.nth(1).unwrap().split("| ");
-        let winning_nums = card_parts
-            .next()
-            .unwrap()
-            .split_ascii_whitespace()
-            .map(|s| s.parse::<u32>().unwrap());
-        let held_nums = card_parts
-            .next()
-            .unwrap()
-            .split_ascii_whitespace()
-            .map(|s| s.parse::<u32>().unwrap())
-            .collect::<Vec<_>>();
-        let matches = winning_nums
-            .filter(|winning_num| held_nums.contains(winning_num))
-            .count() as u32;
-
-        let total_copies = extra_cards.iter().map(|(copies, _)| copies).sum::<u32>() + 1;
-        extra_cards = extra_cards
-            .iter()
-            .filter_map(|&(copies, num)| {
-                if num > 1 {
-                    Some((copies, num - 1))
-                } else {
-                    None
-                }
-            })
-            .collect();
-        if matches > 0 {
-            extra_cards.push((total_copies, matches));
-        }
-        (part_a + (1 << matches) / 2, part_b + total_copies)
-    });
+            let total_copies = extra_cards.iter().map(|(copies, _)| copies).sum::<u32>() + 1;
+            extra_cards = extra_cards
+                .iter()
+                .filter_map(|&(copies, num)| {
+                    if num > 1 {
+                        Some((copies, num - 1))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if matches > 0 {
+                extra_cards.push((total_copies, matches));
+            }
+            (
+                part_a + (1 << matches) / 2,
+                part_b + total_copies,
+                extra_cards,
+            )
+        },
+    );
 
     format!("{}/{}", part_a, part_b)
 }
