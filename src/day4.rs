@@ -23,13 +23,8 @@ pub fn solve(input: &str) -> String {
             let total_copies = extra_cards.iter().map(|(copies, _)| copies).sum::<u32>() + 1;
             extra_cards = extra_cards
                 .iter()
-                .filter_map(|&(copies, num)| {
-                    if num > 1 {
-                        Some((copies, num - 1))
-                    } else {
-                        None
-                    }
-                })
+                .map(|&(copies, num)| (copies, num - 1))
+                .filter(|&(_, num)| num > 0)
                 .collect();
             if matches > 0 {
                 extra_cards.push((total_copies, matches));
