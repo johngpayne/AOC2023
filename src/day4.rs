@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 #[tracing::instrument(skip(input), fields(day = 4))]
 pub fn solve(input: &str) -> String {
     let (part_a, part_b, _) = input.lines().fold(
@@ -5,17 +7,15 @@ pub fn solve(input: &str) -> String {
         |(part_a, part_b, mut extra_cards), line| {
             let mut line_split = line.split(": ");
             let mut card_parts = line_split.nth(1).unwrap().split("| ");
-            let winning_nums = card_parts
-                .next()
-                .unwrap()
-                .split_ascii_whitespace()
-                .map(|s| s.parse::<u32>().unwrap());
-            let held_nums = card_parts
-                .next()
-                .unwrap()
-                .split_ascii_whitespace()
-                .map(|s| s.parse::<u32>().unwrap())
-                .collect::<Vec<_>>();
+            let mut get_nums = || {
+                card_parts
+                    .next()
+                    .unwrap()
+                    .split_ascii_whitespace()
+                    .map(|s| s.parse::<u32>().unwrap())
+            };
+            let winning_nums = get_nums();
+            let held_nums = get_nums().collect_vec();
             let matches = winning_nums
                 .filter(|winning_num| held_nums.contains(winning_num))
                 .count() as u32;

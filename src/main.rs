@@ -3,6 +3,7 @@ use chrono::{Datelike, FixedOffset, Utc};
 use clap::Parser;
 use futures::future::join_all;
 use inventory::{collect, submit};
+use itertools::Itertools;
 use reqwest::{Client, Method};
 use std::{
     fs::{create_dir_all, read_to_string, write},
@@ -86,7 +87,7 @@ async fn main() -> Result<(), Error> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     if args.all {
-        let tasks = (0..25).map(|day| run(1 + day, &args)).collect::<Vec<_>>();
+        let tasks = (0..25).map(|day| run(1 + day, &args)).collect_vec();
         let outputs = join_all(tasks).await;
         for (index, output) in outputs.into_iter().enumerate() {
             write_output(1 + index as u32, output, &args);

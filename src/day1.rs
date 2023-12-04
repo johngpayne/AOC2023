@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 #[tracing::instrument(skip(input), fields(day=1))]
 pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a(input), part_b(input))
@@ -37,7 +39,7 @@ fn part_a(input: &str) -> u32 {
                 .chars()
                 .filter(|ch| ch.is_ascii_digit())
                 .map(|ch| ch.to_digit(10).unwrap())
-                .collect::<Vec<_>>();
+                .collect_vec();
             nums.first().unwrap() * 10 + nums.last().unwrap()
         })
         .sum()

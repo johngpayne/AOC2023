@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 #[tracing::instrument(skip(input), fields(day=2))]
 pub fn solve(input: &str) -> String {
     let games = input
@@ -24,11 +26,11 @@ pub fn solve(input: &str) -> String {
                     });
                     amounts
                 })
-                .collect::<Vec<_>>();
+                .collect_vec();
             tracing::debug!("{} {:?}", game_index, game_turns);
             (game_index, game_turns)
         })
-        .collect::<Vec<_>>();
+        .collect_vec();
 
     let part_a = games
         .iter()
@@ -49,7 +51,7 @@ pub fn solve(input: &str) -> String {
                 agg.iter()
                     .zip(turn)
                     .map(|(&a, &b)| u32::max(a, b))
-                    .collect::<Vec<_>>()
+                    .collect_vec()
                     .try_into()
                     .unwrap()
             })
