@@ -52,6 +52,7 @@ add_day!(2, day2);
 add_day!(3, day3);
 add_day!(4, day4);
 add_day!(5, day5);
+add_day!(6, day6);
 
 collect!(Solution);
 
