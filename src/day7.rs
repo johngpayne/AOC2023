@@ -1,11 +1,10 @@
 use itertools::Itertools;
-use std::{cmp::Ordering, ops::Range};
+use std::ops::Range;
 
 #[derive(Debug)]
 struct Hand {
-    card_indices: [usize; 5],
     bid: u32,
-    counts: Vec<usize>,
+    score: u32,
 }
 
 #[tracing::instrument(skip(input), fields(day = 7))]
@@ -28,66 +27,39 @@ pub fn solve(input: &str) -> String {
 }
 
 fn part_a(hands: &[([char; 5], u32)]) -> u32 {
-    let card_types: [char; 13] = (2..10)
-        .map(|i| char::from_digit(i, 10).unwrap())
-        .chain("TJQKA".chars())
-        .collect_vec()
-        .try_into()
-        .unwrap();
-
+    let card_types = "23456789TJQKA".chars().collect_vec().try_into().unwrap();
     let mut hands = hands
         .iter()
         .map(|&(cards, bid)| {
             let card_indices = get_card_indices(&cards, &card_types);
             let counts = get_card_counts(&card_indices, 0..card_types.len());
-            Hand {
-                card_indices,
-                bid,
-                counts,
-            }
+            let score = get_hand_score(&card_indices, &counts);
+            Hand { bid, score }
         })
         .collect_vec();
 
-    sort_by_score(&mut hands)
+    sort_by_score_and_sum(&mut hands)
 }
 
 fn part_b(hands: &[([char; 5], u32)]) -> u32 {
-    let card_types: [char; 13] = "J"
-        .chars()
-        .chain(
-            (2..10)
-                .map(|i| char::from_digit(i, 10).unwrap())
-                .chain("TQKA".chars()),
-        )
-        .collect_vec()
-        .try_into()
-        .unwrap();
-
+    let card_types = "J23456789TQKA".chars().collect_vec().try_into().unwrap();
     let mut hands = hands
         .iter()
         .map(|&(cards, bid)| {
             let card_indices = get_card_indices(&cards, &card_types);
-            // ignore count of jokers
             let mut counts = get_card_counts(&card_indices, 1..card_types.len());
             let num_jokers = card_indices.iter().filter(|&&card| card == 0).count();
-
-            // use jokers to increase the highest
             if !counts.is_empty() {
                 counts[0] += num_jokers;
-            // or N+1 of a kind up to max 5
             } else if num_jokers > 0 {
                 counts.push((num_jokers + 1).min(5));
             }
-
-            Hand {
-                card_indices,
-                bid,
-                counts,
-            }
+            let score = get_hand_score(&card_indices, &counts);
+            Hand { bid, score }
         })
         .collect_vec();
 
-    sort_by_score(&mut hands)
+    sort_by_score_and_sum(&mut hands)
 }
 
 fn get_card_indices(cards: &[char; 5], card_types: &[char; 13]) -> [usize; 5] {
@@ -99,49 +71,29 @@ fn get_card_indices(cards: &[char; 5], card_types: &[char; 13]) -> [usize; 5] {
         .unwrap()
 }
 
-fn get_card_counts(cards: &[usize; 5], card_range: Range<usize>) -> Vec<usize> {
+fn get_card_counts(card_indices: &[usize; 5], card_range: Range<usize>) -> Vec<usize> {
     let mut counts = card_range
         .map(|card_index| {
-            cards
+            card_indices
                 .iter()
                 .filter(move |&&card| card_index == card)
                 .count()
         })
         .filter(|&card_count| card_count > 1)
         .collect_vec();
-    counts.sort_by_key(|&card_count| card_count);
-    counts.reverse();
+    counts.sort_by_key(|&card_count| usize::MAX - card_count);
     counts
 }
 
-fn sort_by_score(hands: &mut [Hand]) -> u32 {
-    hands.sort_by(|h1, h2| {
-        if !h1.counts.is_empty() || !h2.counts.is_empty() {
-            // If one hand has 2 or more of a kind and other doesn't...
-            let ord = (!h1.counts.is_empty()).cmp(&(!h2.counts.is_empty()));
-            if ord != Ordering::Equal {
-                return ord;
-            }
-            // Compare "N of a kind" in each hand
-            let ord = h1.counts[0].cmp(&h2.counts[0]);
-            if ord != Ordering::Equal {
-                return ord;
-            }
-            // Compare whether or not there is a secondary (ie full house or two pair)
-            let ord = (h1.counts.len() > 1).cmp(&(h2.counts.len() > 1));
-            if ord != Ordering::Equal {
-                return ord;
-            }
-        }
-        for (c1, c2) in h1.card_indices.iter().zip(h2.card_indices.iter()) {
-            let ord = c1.cmp(c2);
-            if ord != std::cmp::Ordering::Equal {
-                return ord;
-            }
-        }
-        std::cmp::Ordering::Equal
-    });
+fn get_hand_score(card_indices: &[usize; 5], counts: &Vec<usize>) -> u32 {
+    ((counts.len() + 2 * *counts.first().unwrap_or(&0)) as u32) * 13_u32.pow(5)
+        + card_indices
+            .iter()
+            .fold(0u32, |agg, &card_index| agg * 13 + (card_index as u32))
+}
 
+fn sort_by_score_and_sum(hands: &mut [Hand]) -> u32 {
+    hands.sort_by_key(|hand| hand.score);
     hands
         .iter()
         .enumerate()
