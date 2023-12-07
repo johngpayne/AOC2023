@@ -31,9 +31,8 @@ pub fn solve(input: &str) -> String {
         .product::<f64>();
 
     let fold_nums = |nums: Vec<f64>| {
-        nums.iter().fold(0f64, |agg, &v| {
-            agg * 10f64.powf(f64::log10(v).ceil()) + v
-        })
+        nums.iter()
+            .fold(0f64, |agg, &v| agg * 10f64.powf(f64::log10(v).ceil()) + v)
     };
     let part_b = calc(fold_nums(times), fold_nums(distances));
 
