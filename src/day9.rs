@@ -7,7 +7,8 @@ pub fn solve(input: &str) -> String {
         .lines()
         .map(|line| {
             line.split_ascii_whitespace()
-                .map(|n| n.parse::<i32>().unwrap()).collect_vec()
+                .map(|n| n.parse::<i32>().unwrap())
+                .collect_vec()
         })
         .fold(IVec2::ZERO, |acc, line| acc + get_next(line));
     format!("{}/{}", parts.x, parts.y)
@@ -20,8 +21,8 @@ fn get_next(line: Vec<i32>) -> IVec2 {
         ivec2(line[line.len() - 1], line[0])
             + ivec2(1, -1)
                 * get_next(
-                    (1..line.len())
-                        .map(|index| line[index] - line[index - 1])
+                    line.windows(2)
+                        .map(|slice| slice[1] - slice[0])
                         .collect_vec(),
                 )
     }
