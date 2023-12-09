@@ -92,10 +92,15 @@ async fn main() -> Result<(), Error> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     if args.all {
+        let start = Instant::now();
         let tasks = (0..25).map(|day| run(1 + day, &args)).collect_vec();
         let outputs = join_all(tasks).await;
         for (index, output) in outputs.into_iter().enumerate() {
             write_output(1 + index as u32, output, &args);
+        }
+        let duration = Instant::now() - start;
+        if args.timed {
+            tracing::info!("\x1b[93mCompleted in: {}\x1b[0m", short_duration_to_str(duration));
         }
     } else {
         let day = if let Some(day) = args.day {
@@ -108,6 +113,14 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
+fn short_duration_to_str(duration: Duration) -> String {
+    if duration < Duration::from_millis(1) {
+        format!("{}μs", duration.as_micros())
+    } else {
+        format!("{}ms", duration.as_millis())
+    }
+}
+
 fn write_output(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
     let prefix = format!("\x1b[34mDay {day}{} \x1b[0m", if day < 10 { " " } else { "" });
     match result {
@@ -116,11 +129,7 @@ fn write_output(day: u32, result: Result<(String, Duration), Error>, args: &Args
             prefix,
             result,
             if args.timed {
-                if duration < Duration::from_millis(1) {
-                    format!("\x1b[93m ({}μs)\x1b[0m", duration.as_micros())
-                } else {
-                    format!("\x1b[93m ({}ms)\x1b[0m", duration.as_millis())
-                }
+                format!("\x1b[93m ({})\x1b[0m", short_duration_to_str(duration))
             } else {
                 String::default()
             }
