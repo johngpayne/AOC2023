@@ -50,12 +50,6 @@ impl Map {
             .and_then(|row| row.get(pos.x as usize))
             .copied()
     }
-    fn width(&self) -> i32 {
-        self.tiles[0].len() as i32
-    }
-    fn height(&self) -> i32 {
-        self.tiles.len() as i32
-    }
 
     fn part_a(&self) -> usize {
         let mut routes = self.find_starts();
@@ -127,8 +121,8 @@ impl Map {
 
     fn find_starts(&self) -> [Route; 2] {
         let pos = (|| {
-            for y in 0..self.height() {
-                for x in 0..self.width() {
+            for y in 0..self.tiles.len() as i32 {
+                for x in 0..self.tiles[0].len() as i32 {
                     let pos = ivec2(x, y);
                     if self.get(&pos) == Some('S') {
                         return pos;
@@ -138,22 +132,23 @@ impl Map {
             panic!();
         })();
         DIRS.iter()
-            .filter(|&&dir| {
+            .filter_map(|&dir| {
                 if let Some(dirs) = self.can_travel_from(&(pos + dir)) {
-                    dirs.contains(&(-dir))
-                } else {
-                    false
+                    if dirs.contains(&(-dir)) {
+                        return Some(Route {
+                            pos: pos + dir,
+                            from: pos,
+                            len: 1,
+                        });
+                    }
                 }
-            })
-            .map(|&dir| Route {
-                pos: pos + dir,
-                from: pos,
-                len: 1,
+                None
             })
             .collect_vec()
             .try_into()
             .unwrap()
     }
+    
     fn can_travel_from(&self, pos: &IVec2) -> Option<[IVec2; 2]> {
         self.get(pos)
             .map(|ch| match ch {
