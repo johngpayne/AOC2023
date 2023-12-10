@@ -30,7 +30,7 @@ struct Map {
     tiles: Vec<Vec<char>>,
 }
 
-const DIRS: [IVec2; 4] = [ivec2(0, 1), ivec2(1, 0), ivec2(0, -1), ivec2(-1, 0)];
+const DIRS: [IVec2; 4] = [IVec2::Y, ivec2(1, 0), IVec2::NEG_Y, IVec2::NEG_X];
 
 impl From<&str> for Map {
     fn from(value: &str) -> Self {
@@ -148,16 +148,16 @@ impl Map {
             .try_into()
             .unwrap()
     }
-    
+
     fn can_travel_from(&self, pos: &IVec2) -> Option<[IVec2; 2]> {
         self.get(pos)
             .map(|ch| match ch {
-                '-' => Some([ivec2(1, 0), ivec2(-1, 0)]),
-                '|' => Some([ivec2(0, 1), ivec2(0, -1)]),
-                'F' => Some([ivec2(1, 0), ivec2(0, 1)]),
-                'L' => Some([ivec2(1, 0), ivec2(0, -1)]),
-                '7' => Some([ivec2(-1, 0), ivec2(0, 1)]),
-                'J' => Some([ivec2(-1, 0), ivec2(0, -1)]),
+                '-' => Some([IVec2::X, IVec2::NEG_X]),
+                '|' => Some([IVec2::Y, IVec2::NEG_Y]),
+                'F' => Some([IVec2::X, IVec2::Y]),
+                'L' => Some([IVec2::X, IVec2::NEG_Y]),
+                '7' => Some([IVec2::NEG_X, IVec2::Y]),
+                'J' => Some([IVec2::NEG_X, IVec2::NEG_Y]),
                 _ => None,
             })
             .unwrap_or(None)
