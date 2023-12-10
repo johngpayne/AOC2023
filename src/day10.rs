@@ -1,5 +1,6 @@
 use glam::{ivec2, IVec2};
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 
 #[derive(Debug)]
 struct Route {
@@ -72,70 +73,55 @@ impl Map {
     fn part_b(&self) -> usize {
         self.find_starts()
             .iter_mut()
-            .filter_map(|route| {
-                let mut outer_position = vec![route.pos];
+            .find_map(|route| {
+                let mut edges = vec![route.pos];
                 while self.get(&route.pos) != Some('S') {
                     route.grow(self);
-                    outer_position.push(route.pos);
+                    edges.push(route.pos);
                 }
-                outer_position.push(outer_position[0]);
+                edges.push(edges[0]);
 
-                let mut map = Map {
-                    tiles: (0..self.height())
-                        .map(|y| {
-                            (0..self.width())
-                                .map(|x| {
-                                    let pos = ivec2(x, y);
-                                    if !outer_position.contains(&pos) {
-                                        ' '
-                                    } else {
-                                        self.get(&pos).unwrap()
-                                    }
-                                })
-                                .collect_vec()
-                        })
-                        .collect_vec(),
-                };
-
-                fn fill(map: &mut Map, pos: &IVec2, num: &mut usize) {
-                    if map.get(pos) != Some(' ') {
-                        return;
-                    }
-                    map.tiles[pos.y as usize][pos.x as usize] = '*';
-                    *num += 1;
-                    for &dir in DIRS.iter() {
-                        fill(map, &(*pos + dir), num);
+                // fill edge_set from pos,
+                // return true if hit edge
+                fn fill(
+                    map: &Map,
+                    edge_set: &mut FxHashSet<IVec2>,
+                    pos: &IVec2,
+                    num: &mut usize,
+                ) -> bool {
+                    if map.get(pos).is_none() {
+                        true
+                    } else if edge_set.contains(pos) {
+                        false
+                    } else {
+                        edge_set.insert(*pos);
+                        *num += 1;
+                        for &dir in DIRS.iter() {
+                            if fill(map, edge_set, &(*pos + dir), num) {
+                                return true;
+                            }
+                        }
+                        false
                     }
                 }
 
                 let mut num = 0;
-                for pos_3 in outer_position.windows(3) {
+                let mut edge_set: FxHashSet<IVec2> = edges.iter().copied().collect();
+                for pos_3 in edges.windows(3) {
                     for pos_2 in pos_3.windows(2) {
-                        fill(
-                            &mut map,
+                        if fill(
+                            self,
+                            &mut edge_set,
                             &(pos_3[1] + (pos_2[1] - pos_2[0]).perp()),
                             &mut num,
-                        );
+                        ) {
+                            return None;
+                        }
                     }
                 }
 
-                // if we got to edge we were looking the wrong way
-                if map.tiles[0].iter().any(|&ch| ch == '*')
-                    || map.tiles[map.tiles.len() - 1].iter().any(|&ch| ch == '*')
-                    || map
-                        .tiles
-                        .iter()
-                        .any(|row| row[0] == '*' || row[row.len() - 1] == '*')
-                {
-                    return None;
-                }
-
-                for y in 0..map.height() {
-                    tracing::debug!("{}", map.tiles[y as usize].iter().collect::<String>());
-                }
                 Some(num)
             })
-            .next()
             .unwrap()
     }
 
