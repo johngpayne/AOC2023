@@ -41,23 +41,20 @@ fn read_data(input: &str) -> (Vec<[usize; 2]>, [Vec<usize>; 2]) {
 }
 
 fn calc_dists(galaxies: &[[usize; 2]], empties: &[Vec<usize>; 2], mults: &[usize]) -> Vec<usize> {
-    let parts = galaxies
-        .iter()
-        .combinations(2)
-        .flat_map(|galaxy_pair| {
-            [0, 1].map(|axis| {
-                let coord = [0, 1].map(|index| galaxy_pair[index][axis]);
-                let min = *coord.iter().min().unwrap();
-                let max = *coord.iter().max().unwrap();
-                [empties[axis][max] - empties[axis][min], max - min]
+    let mut total_empties = 0;
+    let mut total_dist = 0;
+    galaxies.iter().enumerate().for_each(|(index, g0)| {
+        galaxies.iter().skip(index + 1).for_each(|g1| {
+            (0..2).for_each(|axis| {
+                let (min, max) = (g0[axis].min(g1[axis]), g0[axis].max(g1[axis]));
+                total_empties += empties[axis][max] - empties[axis][min];
+                total_dist += max - min;
             })
-        })
-        .fold([0, 0], |agg, values| {
-            [0, 1].map(|index| agg[index] + values[index])
         });
+    });
     mults
         .iter()
-        .map(|mult| (mult - 1) * parts[0] + parts[1])
+        .map(|mult| (mult - 1) * total_empties + total_dist)
         .collect()
 }
 
