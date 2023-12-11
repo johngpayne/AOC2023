@@ -41,12 +41,13 @@ fn read_data(input: &str) -> (Vec<[usize; 2]>, [Vec<usize>; 2]) {
 }
 
 fn calc_dists(galaxies: &[[usize; 2]], empties: &[Vec<usize>; 2], mults: &[usize]) -> Vec<usize> {
+    let min_max = |a: usize, b: usize| (a.min(b), a.max(b));
     let mut total_empties = 0;
     let mut total_dist = 0;
     galaxies.iter().enumerate().for_each(|(index, g0)| {
         galaxies.iter().skip(index + 1).for_each(|g1| {
             (0..2).for_each(|axis| {
-                let (min, max) = (g0[axis].min(g1[axis]), g0[axis].max(g1[axis]));
+                let (min, max) = min_max(g0[axis], g1[axis]);
                 total_empties += empties[axis][max] - empties[axis][min];
                 total_dist += max - min;
             })
