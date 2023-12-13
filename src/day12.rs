@@ -18,17 +18,13 @@ pub fn solve(input: &str) -> String {
             .map(|s| s.parse::<usize>().unwrap())
             .collect_vec();
         let part_a = calc(&chars, &counts);
-        let mut chars_mult = vec![];
-        let mut counts_mult = vec![];
-        for i in 0..5 {
-            if i > 0 {
-                chars_mult.push(b'?');
-            }
-            chars_mult.extend_from_slice(&chars);
-            counts_mult.extend_from_slice(&counts);
-        }
-        
-        let part_b = calc(&chars_mult, &counts_mult);
+
+        let chars = itertools::Itertools::intersperse([&chars].repeat(5).into_iter(), &vec![b'?'])
+            .flatten()
+            .copied()
+            .collect_vec();
+        let counts = counts.repeat(5);
+        let part_b = calc(&chars, &counts);
         (agg.0 + part_a, agg.1 + part_b)
     });
 
@@ -41,14 +37,13 @@ fn calc(chars: &[u8], counts: &[usize]) -> usize {
 }
 
 fn inner_calc(chars: &[u8], counts: &[usize], cache: &mut FxHashMap<[usize; 2], usize>) -> usize {
-    let cache_key = [chars.len(), counts.len()];
-    if let Some(cached_value) = cache.get(&cache_key) {
-        *cached_value
-    } else {
-        let is_dot = |ch: &u8| *ch == b'.' || *ch == b'?';
-        let is_dash = |ch: &u8| *ch == b'#' || *ch == b'?';
-        let value = if !counts.is_empty() {
-            (0..=(1 + chars.len() - counts.iter().sum::<usize>() - counts.len()))
+    let is_dot = |ch: &u8| *ch == b'.' || *ch == b'?';
+    let is_dash = |ch: &u8| *ch == b'#' || *ch == b'?';
+    if !counts.is_empty() {
+        if let Some(cached_value) = cache.get(&[chars.len(), counts.len()]) {
+            *cached_value
+        } else {
+            let value = (0..=(1 + chars.len() - counts.iter().sum::<usize>() - counts.len()))
                 .map(|dot_count| {
                     if chars[0..dot_count].iter().all(is_dot)
                         && chars[dot_count..(dot_count + counts[0])]
@@ -66,14 +61,14 @@ fn inner_calc(chars: &[u8], counts: &[usize], cache: &mut FxHashMap<[usize; 2], 
                         0
                     }
                 })
-                .sum()
-        } else if chars.iter().all(is_dot) {
-            1
-        } else {
-            0
-        };
-        cache.insert(cache_key, value);
-        value
+                .sum();
+            cache.insert([chars.len(), counts.len()], value);
+            value
+        }
+    } else if chars.iter().all(is_dot) {
+        1
+    } else {
+        0
     }
 }
 
