@@ -40,7 +40,7 @@ fn send_beam(map: &[Vec<char>], pos: IVec2, dir_index: u8) -> usize {
     let mut visited_grid = vec![0u8; (size.x * size.y) as usize];
     let mut beams = vec![(pos, dir_index)];
     while !beams.is_empty() {
-        let mut next_beams = vec![];
+        let mut next_beams = Vec::with_capacity(beams.len() * 2);
         for (pos, dir_index) in beams.into_iter() {
             if let Some(&ch) = map
                 .get(pos.y as usize)
