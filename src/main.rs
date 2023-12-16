@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Error};
 use chrono::{Datelike, FixedOffset, Utc};
 use clap::Parser;
-use futures::future::join_all;
 use inventory::{collect, submit};
 use itertools::Itertools;
 use reqwest::{Client, Method};
+use tracing_subscriber::layer::SubscriberExt;
 use std::{
     fs::{create_dir_all, read_to_string, write},
     path::PathBuf,
@@ -79,6 +79,8 @@ struct Args {
     #[arg(long)]
     debug: bool,
     #[arg(long)]
+    trace: bool,
+    #[arg(long)]
     test_only: bool,
 }
 
@@ -96,18 +98,33 @@ async fn main() -> Result<(), Error> {
         .without_time()
         .finish();
 
-    tracing::subscriber::set_global_default(subscriber)?;
+    let _guard = if args.trace {
+        let (chrome_layer, guard) = tracing_chrome::ChromeLayerBuilder::new().build();
+        tracing::subscriber::set_global_default(subscriber.with(chrome_layer))?; 
+        Some(guard)
+    } else {
+        tracing::subscriber::set_global_default(subscriber)?; 
+        None
+    };
 
     if args.all {
         let start = Instant::now();
-        let tasks = (0..25).map(|day| run(1 + day, &args)).collect_vec();
-        let outputs = join_all(tasks).await;
+        let tasks = (0..25)
+            .map(|day| tokio::spawn(run(1 + day, args.year, args.test_only)))
+            .collect_vec();
+        let mut outputs = vec![];
+        for task in tasks {
+            outputs.push(task.await.unwrap())
+        }
         for (index, output) in outputs.into_iter().enumerate() {
             write_output(1 + index as u32, output, &args);
         }
         let duration = Instant::now() - start;
         if args.timed {
-            tracing::info!("\x1b[93mCompleted in: {}\x1b[0m", short_duration_to_str(duration));
+            tracing::info!(
+                "\x1b[93mCompleted in: {}\x1b[0m",
+                short_duration_to_str(duration)
+            );
         }
     } else {
         let day = if let Some(day) = args.day {
@@ -115,7 +132,7 @@ async fn main() -> Result<(), Error> {
         } else {
             get_today()?
         };
-        write_output(day, run(day, &args).await, &args);
+        write_output(day, run(day, args.year, args.test_only).await, &args);
     }
     Ok(())
 }
@@ -129,7 +146,10 @@ fn short_duration_to_str(duration: Duration) -> String {
 }
 
 fn write_output(day: u32, result: Result<(String, Duration), Error>, args: &Args) {
-    let prefix = format!("\x1b[34mDay {day}{} \x1b[0m", if day < 10 { " " } else { "" });
+    let prefix = format!(
+        "\x1b[34mDay {day}{} \x1b[0m",
+        if day < 10 { " " } else { "" }
+    );
     match result {
         Ok((result, duration)) => tracing::info!(
             "{}{}{}",
@@ -177,7 +197,7 @@ async fn get_data(day: u32, year: u32) -> Result<String, Error> {
     Ok(text)
 }
 
-async fn run(day: u32, args: &Args) -> Result<(String, Duration), Error> {
+async fn run(day: u32, year: u32, test_only: bool) -> Result<(String, Duration), Error> {
     // find solution
     let solution = get_solution(day)?;
 
@@ -193,12 +213,12 @@ async fn run(day: u32, args: &Args) -> Result<(String, Duration), Error> {
             test_expected,
         ));
     }
-    if args.test_only {
+    if test_only {
         return Ok(("passed".into(), test_duration));
     }
 
     // get real data and run
-    let data = get_data(day, args.year).await?;
+    let data = get_data(day, year).await?;
     let start = Instant::now();
     let result = (solution.solve)(&data);
     let duration = Instant::now() - start;
