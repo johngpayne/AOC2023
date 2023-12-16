@@ -35,14 +35,14 @@ macro_rules! add_day {
 
 #[tracing::instrument(skip(input), fields(day=N))]
 pub fn solve(input: &str) -> String {
-    format!("SOLVE({})", input)
+    format!("{}", 0)
 }
 
 #[tracing::instrument]
 pub fn test() -> (String, String) {
     (
-        solve("TEST"),
-        "SOLUTION".into(),
+        solve("TEST_DATA"),
+        "?".into(),
     )
 }
 */
@@ -62,6 +62,7 @@ add_day!(12, day12);
 add_day!(13, day13);
 add_day!(14, day14);
 add_day!(15, day15);
+add_day!(16, day16);
 
 collect!(Solution);
 
