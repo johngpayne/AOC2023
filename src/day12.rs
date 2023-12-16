@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
 
 #[tracing::instrument(skip(input), fields(day = 12))]
 pub fn solve(input: &str) -> String {
@@ -31,19 +30,24 @@ pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a, part_b)
 }
 
+const MAX_CHARS: usize = 128;
+const MAX_COUNTS: usize = 32;
+
 fn calc(chars: &[u8], counts: &[usize]) -> usize {
-    let mut cache: FxHashMap<[usize; 2], usize> = FxHashMap::default();
+    assert!(chars.len() < MAX_CHARS);
+    assert!(counts.len() < MAX_COUNTS);
+    let mut cache = vec![None; MAX_CHARS * MAX_COUNTS];
     inner_calc(chars, counts, &mut cache)
 }
 
-fn inner_calc(chars: &[u8], counts: &[usize], cache: &mut FxHashMap<[usize; 2], usize>) -> usize {
-    let is_dot = |ch: &u8| *ch == b'.' || *ch == b'?';
-    let is_dash = |ch: &u8| *ch == b'#' || *ch == b'?';
-    if !counts.is_empty() {
-        if let Some(cached_value) = cache.get(&[chars.len(), counts.len()]) {
-            *cached_value
-        } else {
-            let value = (0..=(1 + chars.len() - counts.iter().sum::<usize>() - counts.len()))
+fn inner_calc(chars: &[u8], counts: &[usize], cache: &mut [Option<usize>]) -> usize {
+    if let Some(cached_value) = cache[MAX_COUNTS * chars.len() + counts.len()] {
+        cached_value
+    } else {
+        let is_dot = |ch: &u8| *ch == b'.' || *ch == b'?';
+        let is_dash = |ch: &u8| *ch == b'#' || *ch == b'?';
+        let value = if !counts.is_empty() {
+            (0..=(1 + chars.len() - counts.iter().sum::<usize>() - counts.len()))
                 .map(|dot_count| {
                     if chars[0..dot_count].iter().all(is_dot)
                         && chars[dot_count..(dot_count + counts[0])]
@@ -61,14 +65,14 @@ fn inner_calc(chars: &[u8], counts: &[usize], cache: &mut FxHashMap<[usize; 2], 
                         0
                     }
                 })
-                .sum();
-            cache.insert([chars.len(), counts.len()], value);
-            value
-        }
-    } else if chars.iter().all(is_dot) {
-        1
-    } else {
-        0
+                .sum()
+        } else if chars.iter().all(is_dot) {
+            1
+        } else {
+            0
+        };
+        cache[MAX_COUNTS * chars.len() + counts.len()] = Some(value);
+        value
     }
 }
 
