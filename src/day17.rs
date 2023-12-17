@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 #[tracing::instrument(skip(input), fields(day = 17))]
 pub fn solve(input: &str) -> String {
-    let map = Map(input
+    let grid = input
         .lines()
         .map(|line| {
             line.trim()
@@ -12,17 +12,18 @@ pub fn solve(input: &str) -> String {
                 .map(|ch| ch.to_digit(10).unwrap())
                 .collect_vec()
         })
-        .collect_vec());
-    let target = ivec2(map.0[0].len() as i32 - 1, map.0.len() as i32 - 1);
+        .collect_vec();
+    let size = ivec2(grid[0].len() as i32, grid.len() as i32);
+    let map = Map { grid, size };
 
     format!(
         "{}/{}",
-        expand_routes::<1, 3>(&map, target),
-        expand_routes::<4, 10>(&map, target)
+        expand_routes::<1, 3>(&map),
+        expand_routes::<4, 10>(&map)
     )
 }
 
-fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map, target: IVec2) -> u32 {
+fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
     let mut routes = [Route {
         pos: IVec2::ZERO,
         cost: 0,
@@ -30,16 +31,16 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map, target: IVec2) -> u3
     }]
     .into_iter()
     .collect::<VecDeque<_>>();
-    let mut best_costs = [0, 1].map(|_| vec![vec![u32::MAX; map.0[0].len()]; map.0.len()]);
+    let mut best_costs = [0, 1].map(|_| vec![u32::MAX; (map.size.x * map.size.y) as usize]);
+    best_costs[1][0] = 0;
+
+    let target = map.size - IVec2::ONE;
 
     while !routes.is_empty() {
         let route = routes.pop_front().unwrap();
         if route.pos != target {
-            let best_cost = if route.index != usize::MAX {
-                best_costs[route.index & 1][route.pos.y as usize][route.pos.x as usize]
-            } else {
-                0
-            };
+            let best_cost =
+                best_costs[route.index & 1][(route.pos.y * map.size.x + route.pos.x) as usize];
             if route.cost == best_cost {
                 if route.index == usize::MAX {
                     [0, 1]
@@ -48,16 +49,14 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map, target: IVec2) -> u3
                 }
                 .into_iter()
                 .for_each(|index| {
-                    let mut route = route;
-                    route.index = index;
+                    let mut route = Route { index, ..route };
                     for dist in 1..=MAX {
                         route.pos += DIRS[index];
-                        if let Some(cost) = map.get(route.pos, target) {
+                        if let Some(cost) = map.get(route.pos) {
                             route.cost += cost;
                             if dist >= MIN {
                                 let best_cost = &mut best_costs[route.index & 1]
-                                    [route.pos.y as usize]
-                                    [route.pos.x as usize];
+                                    [(route.pos.y * map.size.x + route.pos.x) as usize];
                                 if route.cost < *best_cost {
                                     *best_cost = route.cost;
                                     routes.push_back(route);
@@ -73,7 +72,7 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map, target: IVec2) -> u3
     }
     best_costs
         .iter()
-        .map(|best_costs| best_costs[target.y as usize][target.x as usize])
+        .map(|best_costs| best_costs[(target.y * map.size.x + target.x) as usize])
         .min()
         .unwrap()
 }
@@ -87,12 +86,15 @@ struct Route {
 
 const DIRS: [IVec2; 4] = [ivec2(1, 0), ivec2(0, 1), ivec2(-1, 0), ivec2(0, -1)];
 
-struct Map(Vec<Vec<u32>>);
+struct Map {
+    grid: Vec<Vec<u32>>,
+    size: IVec2,
+}
 
 impl Map {
-    fn get(&self, pos: IVec2, target: IVec2) -> Option<u32> {
-        if pos.x >= 0 && pos.y >= 0 && pos.x <= target.x && pos.y <= target.y {
-            Some(self.0[pos.y as usize][pos.x as usize])
+    fn get(&self, pos: IVec2) -> Option<u32> {
+        if pos.x >= 0 && pos.y >= 0 && pos.x < self.size.x && pos.y < self.size.y {
+            Some(self.grid[pos.y as usize][pos.x as usize])
         } else {
             None
         }
