@@ -9,7 +9,7 @@ pub fn solve(input: &str) -> String {
         .map(|line| {
             line.trim()
                 .chars()
-                .map(|ch| ch.to_digit(10).unwrap())
+                .map(|ch| ch.to_digit(10).unwrap() as u8)
                 .collect_vec()
         })
         .collect_vec();
@@ -27,7 +27,7 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
     let mut routes = [Route {
         pos: IVec2::ZERO,
         cost: 0,
-        index: usize::MAX,
+        index: u8::MAX,
     }]
     .into_iter()
     .collect::<VecDeque<_>>();
@@ -40,9 +40,9 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
         let route = routes.pop_front().unwrap();
         if route.pos != target {
             let best_cost =
-                best_costs[route.index & 1][(route.pos.y * map.size.x + route.pos.x) as usize];
+                best_costs[(route.index & 1) as usize][(route.pos.y * map.size.x + route.pos.x) as usize];
             if route.cost == best_cost {
-                if route.index == usize::MAX {
+                if route.index == u8::MAX {
                     [0, 1]
                 } else {
                     [(route.index + 1) % 4, (route.index + 3) % 4]
@@ -51,11 +51,11 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
                 .for_each(|index| {
                     let mut route = Route { index, ..route };
                     for dist in 1..=MAX {
-                        route.pos += DIRS[index];
+                        route.pos += DIRS[index as usize];
                         if let Some(cost) = map.get(route.pos) {
-                            route.cost += cost;
+                            route.cost += cost as u32;
                             if dist >= MIN {
-                                let best_cost = &mut best_costs[route.index & 1]
+                                let best_cost = &mut best_costs[(route.index & 1) as usize]
                                     [(route.pos.y * map.size.x + route.pos.x) as usize];
                                 if route.cost < *best_cost {
                                     *best_cost = route.cost;
@@ -81,18 +81,18 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
 struct Route {
     pos: IVec2,
     cost: u32,
-    index: usize,
+    index: u8,
 }
 
 const DIRS: [IVec2; 4] = [ivec2(1, 0), ivec2(0, 1), ivec2(-1, 0), ivec2(0, -1)];
 
 struct Map {
-    grid: Vec<Vec<u32>>,
+    grid: Vec<Vec<u8>>,
     size: IVec2,
 }
 
 impl Map {
-    fn get(&self, pos: IVec2) -> Option<u32> {
+    fn get(&self, pos: IVec2) -> Option<u8> {
         if pos.x >= 0 && pos.y >= 0 && pos.x < self.size.x && pos.y < self.size.y {
             Some(self.grid[pos.y as usize][pos.x as usize])
         } else {
