@@ -11,11 +11,11 @@ pub fn solve(input: &str) -> String {
             let dist = line_split.next().unwrap().parse::<i32>().unwrap();
 
             let hex = &line_split.next().unwrap()[2..8];
-            let dist2 = i32::from_str_radix(&hex[0..5], 16).unwrap();
-            let dir2 =
+            let hex_dist = i32::from_str_radix(&hex[0..5], 16).unwrap();
+            let hex_dir =
                 ['R', 'D', 'L', 'U'][hex.chars().nth(5).unwrap().to_digit(10).unwrap() as usize];
 
-            [(dir, dist), (dir2, dist2)]
+            [(dir, dist), (hex_dir, hex_dist)]
         })
         .collect_vec();
 
@@ -23,45 +23,75 @@ pub fn solve(input: &str) -> String {
     lines.push(lines[0]);
     lines.push(lines[1]);
 
-    let area = [0, 1].map(|index| {
+    let areas = [0, 1].map(|index| {
         let mut pos = ivec2(0, 0);
-        let mut edges: Vec<IVec2> = vec![];
-
+        let mut edges = vec![];
         for window in lines.windows(3) {
             let ((prev_dir, _), (dir, len), (next_dir, _)) =
                 (window[0][index], window[1][index], window[2][index]);
             match dir {
-                'D' | 'U' => {
-                    let dir_scale = if dir == 'D' { 1 } else { -1 };
-                    (1..len).for_each(|index| edges.push(pos + dir_scale * index * IVec2::Y));
-                    pos += dir_scale * len * IVec2::Y;
+                'D' => {
+                    edges.push((pos + IVec2::Y, len - 1));
+                    pos += len * IVec2::Y;
                 }
-                'R' | 'L' => {
-                    let (match_vert, dir_scale) = if dir == 'R' { ('U', 1) } else { ('D', -1) };
-                    if prev_dir == match_vert {
-                        edges.push(pos);
+                'U' => {
+                    edges.push((pos - (len - 1) * IVec2::Y, len - 1));
+                    pos -= len * IVec2::Y;
+                }
+                'R' => {
+                    if prev_dir == 'U' {
+                        edges.push((pos, 1));
                     }
-                    pos += dir_scale * len * IVec2::X;
-                    if next_dir != match_vert {
-                        edges.push(pos);
+                    pos += len * IVec2::X;
+                    if next_dir != 'U' {
+                        edges.push((pos, 1));
+                    }
+                }
+                'L' => {
+                    if prev_dir == 'D' {
+                        edges.push((pos, 1));
+                    }
+                    pos -= len * IVec2::X;
+                    if next_dir != 'D' {
+                        edges.push((pos, 1));
                     }
                 }
                 _ => panic!(),
             }
         }
-        let t = std::time::Instant::now();
-        edges.sort_by(|e1, e2| e1.y.cmp(&e2.y).then(e1.x.cmp(&e2.x)));
-        let d = std::time::Instant::now() - t;
-        tracing::debug!("sort took {}ms", d.as_millis());
+        edges.sort_by_key(|edge| edge.0.y);
 
+        let mut tracked_edges = vec![];
+        let mut edge_index = 0;
         let mut area = 0;
-        for edge_pair in edges.chunks(2) {
-            area += (1 + edge_pair[1].x - edge_pair[0].x) as usize
+
+        for y in edges[0].0.y..=(edges[edges.len() - 1].0.y) {
+            // add edges matching y
+            let mut added = false;
+            while edge_index < edges.len() && edges[edge_index].0.y == y {
+                tracked_edges.push(edges[edge_index]);
+                edge_index += 1;
+                added = true;
+            }
+            // sort if added
+            if added {
+                tracked_edges.sort_by_key(|(pos, _)| pos.x);
+            }
+            // add area
+            area += tracked_edges
+                .chunks(2)
+                .map(|pair| (1 + pair[1].0.x - pair[0].0.x) as usize)
+                .sum::<usize>();
+            // remove any redundant edges
+            tracked_edges = tracked_edges
+                .into_iter()
+                .filter_map(|(p, n)| if n > 1 { Some((p, n - 1)) } else { None })
+                .collect_vec();
         }
         area
     });
 
-    format!("{}/{}", area[0], area[1])
+    format!("{}/{}", areas[0], areas[1])
 }
 
 #[tracing::instrument]
