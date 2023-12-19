@@ -21,13 +21,13 @@ impl Test {
 }
 
 type Goto<'target> = (Test, &'target str);
-type Instruction<'name, 'target> = FxHashMap<&'name str, Vec<Goto<'target>>>;
+type Instructions<'name, 'target> = FxHashMap<&'name str, Vec<Goto<'target>>>;
 
 #[tracing::instrument(skip(input), fields(day = 19))]
 pub fn solve(input: &str) -> String {
     let mut input_split = input.split("\n\n");
 
-    let insts: Instruction = input_split
+    let insts = input_split
         .next()
         .unwrap()
         .lines()
@@ -75,7 +75,7 @@ pub fn solve(input: &str) -> String {
 
             (name, commands)
         })
-        .collect();
+        .collect::<Instructions>();
 
     let values = input_split
         .next()
@@ -95,7 +95,7 @@ pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a(&insts, &values), part_b(&insts))
 }
 
-fn part_a(insts: &Instruction, values: &[[u32; 4]]) -> u32 {
+fn part_a(insts: &Instructions, values: &[[u32; 4]]) -> u32 {
     values
         .iter()
         .map(|value| {
@@ -126,7 +126,7 @@ fn part_a(insts: &Instruction, values: &[[u32; 4]]) -> u32 {
 type Xmas = [RangeInclusive<u32>; 4];
 type Cache<'name> = FxHashMap<&'name str, Vec<Xmas>>;
 
-fn part_b(insts: &Instruction) -> u64 {
+fn part_b(insts: &Instructions) -> u64 {
     let mut cache: Cache = Cache::default();
     cache_routes_to(insts, "A", &mut cache);
     cache.get("A").unwrap().iter().map(|result| {
@@ -150,7 +150,7 @@ fn filter(result: &mut Xmas, test: &Test) {
 }
 
 fn cache_routes_to<'name>(
-    insts: &Instruction<'name, '_>,
+    insts: &Instructions<'name, '_>,
     to: &'name str,
     cache: &mut Cache<'name>,
 ) {
