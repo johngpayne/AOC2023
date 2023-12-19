@@ -20,11 +20,14 @@ impl Test {
     }
 }
 
+type Goto<'target> = (Test, &'target str);
+type Instruction<'name, 'target> = FxHashMap<&'name str, Vec<Goto<'target>>>;
+
 #[tracing::instrument(skip(input), fields(day = 19))]
 pub fn solve(input: &str) -> String {
     let mut input_split = input.split("\n\n");
 
-    let insts: FxHashMap<&str, Vec<(Test, &str)>> = input_split
+    let insts: Instruction = input_split
         .next()
         .unwrap()
         .lines()
@@ -92,7 +95,7 @@ pub fn solve(input: &str) -> String {
     format!("{}/{}", part_a(&insts, &values), part_b(&insts))
 }
 
-fn part_a(insts: &FxHashMap<&str, Vec<(Test, &str)>>, values: &[[u32; 4]]) -> u32 {
+fn part_a(insts: &Instruction, values: &[[u32; 4]]) -> u32 {
     values
         .iter()
         .map(|value| {
@@ -120,9 +123,10 @@ fn part_a(insts: &FxHashMap<&str, Vec<(Test, &str)>>, values: &[[u32; 4]]) -> u3
         .sum::<u32>()
 }
 
-type Cache<'a> = FxHashMap<&'a str, Vec<[RangeInclusive<u32>; 4]>>;
+type Xmas = [RangeInclusive<u32>; 4];
+type Cache<'name> = FxHashMap<&'name str, Vec<Xmas>>;
 
-fn part_b(insts: &FxHashMap<&str, Vec<(Test, &str)>>) -> u64 {
+fn part_b(insts: &Instruction) -> u64 {
     let mut cache: Cache = Cache::default();
     cache_routes_to(insts, "A", &mut cache);
     cache.get("A").unwrap().iter().map(|result| {
@@ -133,22 +137,22 @@ fn part_b(insts: &FxHashMap<&str, Vec<(Test, &str)>>) -> u64 {
     }).sum::<u64>()
 }
 
-fn filter(results: &mut [RangeInclusive<u32>; 4], test: &Test) {
+fn filter(result: &mut Xmas, test: &Test) {
     match test {
         Test::Greater(index, val) => {
-            results[*index] = *results[*index].start().max(&(val + 1))..=*results[*index].end()
+            result[*index] = *result[*index].start().max(&(val + 1))..=*result[*index].end()
         }
         Test::Less(index, val) => {
-            results[*index] = *results[*index].start()..=*results[*index].end().min(&(val - 1))
+            result[*index] = *result[*index].start()..=*result[*index].end().min(&(val - 1))
         }
         Test::Always => {}
     }
 }
 
-fn cache_routes_to<'a>(
-    insts: &FxHashMap<&'a str, Vec<(Test, &str)>>,
-    to: &'a str,
-    cache: &mut Cache<'a>,
+fn cache_routes_to<'name>(
+    insts: &Instruction<'name, '_>,
+    to: &'name str,
+    cache: &mut Cache<'name>,
 ) {
     if !cache.contains_key(to) {
         let mut results = vec![];
