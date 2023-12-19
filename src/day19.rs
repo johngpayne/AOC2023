@@ -175,7 +175,7 @@ fn cache_routes_to<'name>(
                 }
             }
         }
-        cache.insert(to, results.clone());
+        cache.insert(to, results);
     }
 }
 
