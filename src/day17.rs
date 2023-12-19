@@ -1,6 +1,6 @@
 use glam::{ivec2, IVec2};
 use itertools::Itertools;
-use std::collections::VecDeque;
+use std::collections::BinaryHeap;
 
 #[tracing::instrument(skip(input), fields(day = 17))]
 pub fn solve(input: &str) -> String {
@@ -23,51 +23,83 @@ pub fn solve(input: &str) -> String {
     )
 }
 
+#[derive(Debug, Copy, Clone)]
+struct Route {
+    pos: IVec2,
+    cost: u32,
+    index: u8,
+    score: u32,
+}
+
+impl PartialEq for Route {
+    fn eq(&self, other: &Self) -> bool {
+        self.score == other.score
+    }
+}
+impl Eq for Route {}
+impl PartialOrd for Route {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.score.partial_cmp(&other.score).map(|p| p.reverse())
+    }
+}
+impl Ord for Route {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.score.cmp(&other.score).reverse()
+    }
+}
+
 fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
+    let target = map.size - IVec2::ONE;
+    let score =
+        |cost: u32, pos: IVec2| cost + ((pos.x - target.x).abs() + (pos.y - target.y).abs()) as u32;
+
     let mut routes = [Route {
         pos: IVec2::ZERO,
         cost: 0,
         index: u8::MAX,
+        score: score(0, IVec2::ZERO),
     }]
     .into_iter()
-    .collect::<VecDeque<_>>();
+    .collect::<BinaryHeap<_>>();
+
     let mut best_costs = [0, 1].map(|_| vec![u32::MAX; (map.size.x * map.size.y) as usize]);
     best_costs[1][0] = 0;
 
-    let target = map.size - IVec2::ONE;
-
     while !routes.is_empty() {
-        let route = routes.pop_front().unwrap();
-        if route.pos != target {
-            let best_cost =
-                best_costs[(route.index & 1) as usize][(route.pos.y * map.size.x + route.pos.x) as usize];
-            if route.cost == best_cost {
-                if route.index == u8::MAX {
-                    [0, 1]
-                } else {
-                    [(route.index + 1) % 4, (route.index + 3) % 4]
-                }
-                .into_iter()
-                .for_each(|index| {
-                    let mut route = Route { index, ..route };
-                    for dist in 1..=MAX {
-                        route.pos += DIRS[index as usize];
-                        if let Some(cost) = map.get(route.pos) {
-                            route.cost += cost as u32;
-                            if dist >= MIN {
-                                let best_cost = &mut best_costs[(route.index & 1) as usize]
-                                    [(route.pos.y * map.size.x + route.pos.x) as usize];
-                                if route.cost < *best_cost {
-                                    *best_cost = route.cost;
-                                    routes.push_back(route);
-                                }
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-                });
+        let route = routes.pop().unwrap();
+        if route.pos == target {
+            break;
+        }
+        let best_cost = best_costs[(route.index & 1) as usize]
+            [(route.pos.y * map.size.x + route.pos.x) as usize];
+        if route.cost == best_cost {
+            if route.index == u8::MAX {
+                [0, 1]
+            } else {
+                [(route.index + 1) % 4, (route.index + 3) % 4]
             }
+            .into_iter()
+            .for_each(|index| {
+                let mut route = Route { index, ..route };
+                for dist in 1..=MAX {
+                    const DIRS: [IVec2; 4] = [ivec2(1, 0), ivec2(0, 1), ivec2(-1, 0), ivec2(0, -1)];
+                    route.pos += DIRS[index as usize];
+                    if let Some(cost) = map.get(route.pos) {
+                        route.cost += cost as u32;
+                        if dist >= MIN {
+                            let best_cost = &mut best_costs[(route.index & 1) as usize]
+                                [(route.pos.y * map.size.x + route.pos.x) as usize];
+                            if route.cost < *best_cost {
+                                *best_cost = route.cost;
+                                route.score = score(route.cost, route.pos);
+                                routes.push(route);
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            });
         }
     }
     best_costs
@@ -76,15 +108,6 @@ fn expand_routes<const MIN: u32, const MAX: u32>(map: &Map) -> u32 {
         .min()
         .unwrap()
 }
-
-#[derive(Debug, Copy, Clone)]
-struct Route {
-    pos: IVec2,
-    cost: u32,
-    index: u8,
-}
-
-const DIRS: [IVec2; 4] = [ivec2(1, 0), ivec2(0, 1), ivec2(-1, 0), ivec2(0, -1)];
 
 struct Map {
     grid: Vec<Vec<u8>>,
