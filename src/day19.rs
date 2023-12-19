@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
@@ -118,62 +120,59 @@ fn part_a(insts: &FxHashMap<&str, Vec<(Test, &str)>>, values: &[[u32; 4]]) -> u3
         .sum::<u32>()
 }
 
+type Cache<'a> = FxHashMap<&'a str, Vec<[RangeInclusive<u32>; 4]>>;
+
 fn part_b(insts: &FxHashMap<&str, Vec<(Test, &str)>>) -> u64 {
-    let routes = find_routes_to(insts, "A");
-    for r in routes.iter() {
-        tracing::debug!("route {:?}", r);
-    }
-    let mut total = 0;
-    for route in routes {
-        let mut results = [0, 1, 2, 3].map(|_| 1..=4000);
-        for test in route {
-            match test {
-                Test::Greater(index, val) => {
-                    results[index] = *results[index].start().max(&(val + 1))..=*results[index].end()
-                }
-                Test::Less(index, val) => {
-                    results[index] = *results[index].start()..=*results[index].end().min(&(val - 1))
-                }
-                Test::Always => panic!(),
-            }
-        }
-        total += results
+    let mut cache: Cache = Cache::default();
+    cache_routes_to(insts, "A", &mut cache);
+    cache.get("A").unwrap().iter().map(|result| {
+        result
             .iter()
-            .map(|result| (1 + result.end() - result.start()) as u64)
-            .product::<u64>();
-    }
-    total
+            .map(|range| (1 + range.end() - range.start()) as u64)
+            .product::<u64>()
+    }).sum::<u64>()
 }
 
-fn find_routes_to(
-    insts: &FxHashMap<&str, Vec<(Test, &str)>>,
-    to: &str,
-) -> Vec<Vec<Test>> {
-    let mut results = vec![];
-    if to == "in" {
-        results.push(vec![]);
-    } else {
-        for (&name, commands) in insts.iter() {
-            for (index, &(test, goto)) in commands.iter().enumerate() {
-                if goto == to {
-                    let sub_routes = find_routes_to(insts, name);
-                    for mut sub_route in sub_routes {
-                        sub_route.extend(
-                            commands
-                                .iter()
-                                .take(index)
-                                .map(|(prev_test, _)| prev_test.reverse()),
-                        );
-                        if !matches!(test, Test::Always) {
-                            sub_route.push(test);
+fn filter(results: &mut [RangeInclusive<u32>; 4], test: &Test) {
+    match test {
+        Test::Greater(index, val) => {
+            results[*index] = *results[*index].start().max(&(val + 1))..=*results[*index].end()
+        }
+        Test::Less(index, val) => {
+            results[*index] = *results[*index].start()..=*results[*index].end().min(&(val - 1))
+        }
+        Test::Always => {}
+    }
+}
+
+fn cache_routes_to<'a>(
+    insts: &FxHashMap<&'a str, Vec<(Test, &str)>>,
+    to: &'a str,
+    cache: &mut Cache<'a>,
+) {
+    if !cache.contains_key(to) {
+        let mut results = vec![];
+        if to == "in" {
+            results.push([0, 1, 2, 3].map(|_| 1..=4000));
+        } else {
+            for (&name, commands) in insts.iter() {
+                for (index, (test, goto)) in commands.iter().enumerate() {
+                    if goto == &to {
+                        cache_routes_to(insts, name, cache);
+                        for sub_route in cache.get(name).unwrap() {
+                            let mut sub_route = sub_route.clone();
+                            for (prev_test, _) in commands.iter().take(index) {
+                                filter(&mut sub_route, &prev_test.reverse());
+                            }
+                            filter(&mut sub_route, test);
+                            results.push(sub_route);
                         }
-                        results.push(sub_route);
                     }
                 }
             }
         }
+        cache.insert(to, results.clone());
     }
-    results
 }
 
 #[tracing::instrument]

@@ -141,7 +141,7 @@ async fn main() -> Result<(), Error> {
 }
 
 fn short_duration_to_str(duration: Duration) -> String {
-    if duration < Duration::from_millis(1) {
+    if duration < 5 * Duration::from_millis(1) {
         format!("{}μs", duration.as_micros())
     } else {
         format!("{}ms", duration.as_millis())
