@@ -65,6 +65,7 @@ add_day!(15, day15);
 add_day!(16, day16);
 add_day!(17, day17);
 add_day!(18, day18);
+add_day!(19, day19);
 
 collect!(Solution);
 
