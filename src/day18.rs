@@ -56,11 +56,11 @@ pub fn solve(input: &str) -> String {
                 dir: dirs[&line_split.next().unwrap().chars().next().unwrap()],
                 len: line_split.next().unwrap().parse::<i32>().unwrap(),
             };
-            let hex = &line_split.next().unwrap()[2..8];
+            let mut hex = line_split.next().unwrap()[2..8].chars().map(|ch| ch.to_digit(16).unwrap());
             let part_b = DirAndLen {
+                len: (0..5).fold(0, |agg, _| agg * 16 + hex.next().unwrap()) as i32,
                 dir: [IVec2::X, IVec2::Y, -IVec2::X, -IVec2::Y]
-                    [hex.chars().nth(5).unwrap().to_digit(10).unwrap() as usize],
-                len: i32::from_str_radix(&hex[0..5], 16).unwrap(),
+                [hex.next().unwrap() as usize],
             };
             [part_a, part_b]
         })

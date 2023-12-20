@@ -44,23 +44,21 @@ pub fn solve(input: &str) -> String {
                         (Test::Always, command_str)
                     } else {
                         let mut command_split = command_str.split(':');
-                        let test = command_split.next().unwrap();
-                        let var_ch = test[0..1].chars().next().unwrap();
+                        let mut test_chars = command_split.next().unwrap().chars();
+                        let ch = test_chars.next().unwrap();
                         let var = ['x', 'm', 'a', 's']
                             .into_iter()
-                            .position(|ch| ch == var_ch)
+                            .position(|test| test == ch)
                             .unwrap();
-
-                        let val = test[2..].parse::<u32>().unwrap();
-                        let target = command_split.next().unwrap();
-                        let op = test[1..2].chars().next().unwrap();
+                        let op = test_chars.next().unwrap();
+                        let val = test_chars.collect::<String>().parse::<u32>().unwrap();
                         (
                             match op {
                                 '>' => Test::Greater(var, val),
                                 '<' => Test::Less(var, val),
                                 _ => panic!(),
                             },
-                            target,
+                            command_split.next().unwrap(),
                         )
                     }
                 })
@@ -129,12 +127,17 @@ type Cache<'name> = FxHashMap<&'name str, Vec<Xmas>>;
 fn part_b(insts: &Instructions) -> u64 {
     let mut cache: Cache = Cache::default();
     cache_routes_to(insts, "A", &mut cache);
-    cache.get("A").unwrap().iter().map(|result| {
-        result
-            .iter()
-            .map(|range| (1 + range.end() - range.start()) as u64)
-            .product::<u64>()
-    }).sum::<u64>()
+    cache
+        .get("A")
+        .unwrap()
+        .iter()
+        .map(|result| {
+            result
+                .iter()
+                .map(|range| (1 + range.end() - range.start()) as u64)
+                .product::<u64>()
+        })
+        .sum::<u64>()
 }
 
 fn filter(result: &mut Xmas, test: &Test) {
