@@ -35,22 +35,7 @@ fn part_a(instructions: &Vec<usize>, moves: &FxHashMap<&str, [&str; 2]>) -> usiz
 }
 
 fn part_b(instructions: &Vec<usize>, moves: &FxHashMap<&str, [&str; 2]>) -> usize {
-    fn lcm(nums: &[usize]) -> usize {
-        if nums.len() == 1 {
-            nums[0]
-        } else {
-            let inner = lcm(&nums[1..]);
-            nums[0] * inner / gcd(nums[0], inner)
-        }
-    }
-    fn gcd(a: usize, b: usize) -> usize {
-        if b == 0 {
-            a
-        } else {
-            gcd(b, a % b)
-        }
-    }
-    lcm(&moves
+    crate::utils::lcm(&moves
         .keys()
         .filter(|key| key.ends_with('A'))
         .map(|key| run(key, instructions, moves))

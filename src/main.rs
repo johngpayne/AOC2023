@@ -11,6 +11,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+mod utils;
+
 struct Solution {
     day: u32,
     solve: fn(&str) -> String,
@@ -66,6 +68,7 @@ add_day!(16, day16);
 add_day!(17, day17);
 add_day!(18, day18);
 add_day!(19, day19);
+add_day!(20, day20);
 
 collect!(Solution);
 
