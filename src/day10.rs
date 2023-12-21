@@ -30,8 +30,8 @@ struct Map {
     tiles: Vec<Vec<char>>,
 }
 
-const DIRS: [IVec2; 4] = [IVec2::Y, ivec2(1, 0), IVec2::NEG_Y, IVec2::NEG_X];
-
+const DIRS: [IVec2; 4] = [ivec2(1, 0), ivec2(0, 1), ivec2(-1, 0), ivec2(0, -1)];
+                    
 impl From<&str> for Map {
     fn from(value: &str) -> Self {
         Map {
