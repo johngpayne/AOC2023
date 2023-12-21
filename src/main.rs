@@ -4,12 +4,12 @@ use clap::Parser;
 use inventory::{collect, submit};
 use itertools::Itertools;
 use reqwest::{Client, Method};
-use tracing_subscriber::layer::SubscriberExt;
 use std::{
     fs::{create_dir_all, read_to_string, write},
     path::PathBuf,
     time::{Duration, Instant},
 };
+use tracing_subscriber::layer::SubscriberExt;
 
 mod utils;
 
@@ -35,8 +35,12 @@ macro_rules! add_day {
 /*
 // Template
 
-#[tracing::instrument(skip(input), fields(day=N))]
+use itertools::Itertools;
+
+#[tracing::instrument(skip(input), fields(day=XXX))]
 pub fn solve(input: &str) -> String {
+    let lines = input.lines().map(|line| line.trim()).collect_vec();
+    tracing::debug!("input {:?}", lines);
     format!("{}", 0)
 }
 
@@ -69,6 +73,7 @@ add_day!(17, day17);
 add_day!(18, day18);
 add_day!(19, day19);
 add_day!(20, day20);
+add_day!(21, day21);
 
 collect!(Solution);
 
@@ -88,6 +93,8 @@ struct Args {
     trace: bool,
     #[arg(long)]
     test_only: bool,
+    #[arg(long)]
+    no_test: bool,
 }
 
 #[tokio::main]
@@ -106,17 +113,17 @@ async fn main() -> Result<(), Error> {
 
     let _guard = if args.trace {
         let (chrome_layer, guard) = tracing_chrome::ChromeLayerBuilder::new().build();
-        tracing::subscriber::set_global_default(subscriber.with(chrome_layer))?; 
+        tracing::subscriber::set_global_default(subscriber.with(chrome_layer))?;
         Some(guard)
     } else {
-        tracing::subscriber::set_global_default(subscriber)?; 
+        tracing::subscriber::set_global_default(subscriber)?;
         None
     };
 
     if args.all {
         let start = Instant::now();
         let tasks = (0..25)
-            .map(|day| tokio::spawn(run(1 + day, args.year, args.test_only)))
+            .map(|day| tokio::spawn(run(1 + day, args.year, args.test_only, args.no_test)))
             .collect_vec();
         let mut outputs = vec![];
         for task in tasks {
@@ -138,7 +145,11 @@ async fn main() -> Result<(), Error> {
         } else {
             get_today()?
         };
-        write_output(day, run(day, args.year, args.test_only).await, &args);
+        write_output(
+            day,
+            run(day, args.year, args.test_only, args.no_test).await,
+            &args,
+        );
     }
     Ok(())
 }
@@ -203,24 +214,31 @@ async fn get_data(day: u32, year: u32) -> Result<String, Error> {
     Ok(text)
 }
 
-async fn run(day: u32, year: u32, test_only: bool) -> Result<(String, Duration), Error> {
+async fn run(
+    day: u32,
+    year: u32,
+    test_only: bool,
+    no_test: bool,
+) -> Result<(String, Duration), Error> {
     // find solution
     let solution = get_solution(day)?;
 
     // run test
-    let test_start = Instant::now();
-    let (test_result, test_expected) = (solution.test)();
-    let test_duration = Instant::now() - test_start;
+    if !no_test {
+        let test_start = Instant::now();
+        let (test_result, test_expected) = (solution.test)();
+        let test_duration = Instant::now() - test_start;
 
-    if test_result != test_expected {
-        return Err(anyhow!(
-            "failed test, got '{}' expected '{}'",
-            test_result,
-            test_expected,
-        ));
-    }
-    if test_only {
-        return Ok(("passed".into(), test_duration));
+        if test_result != test_expected {
+            return Err(anyhow!(
+                "failed test, got '{}' expected '{}'",
+                test_result,
+                test_expected,
+            ));
+        }
+        if test_only {
+            return Ok(("passed".into(), test_duration));
+        }
     }
 
     // get real data and run
