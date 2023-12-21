@@ -95,10 +95,9 @@ impl Map {
             let mut new_pages: Vec<(u64, Page)> = vec![];
 
             let mut expand_generic = |pos, dir, steps_left| {
-                //tracing::debug!("expand_generic {pos:?} {dir:?} {steps_left}");
                 let new_pos = pos + dir;
                 let (min_in_dir, border_hash, border) = page.get_border(dir);
-                if *min_in_dir < steps_left {
+                if steps_left >= *min_in_dir {
                     if !cached_pages.contains_key(border_hash) {
                         new_pages.push((*border_hash, Page::new(self, border, steps & 1)));
                     }
@@ -107,25 +106,44 @@ impl Map {
                 }
             };
 
-            let mut expand_sideways = |pos, dir, mut steps_left| {
-                //tracing::debug!("expand_sideways {pos:?} {dir:?} {steps_left}");
+            let mut expand_horizontal = |pos, dir, mut steps_left| {
                 let (min_in_dir, border_hash, _) = page.get_border(dir);
 
                 if page_hash == *border_hash {
-                    if *min_in_dir < steps_left {
-                        steps_left -= min_in_dir;
-                        while *min_in_dir < steps_left {
-                            //tracing::debug!("  repeating... {}", steps_left);
-                            total_score += page.score(steps_left, steps & 1);
+                    if steps_left >= *min_in_dir {
+                        loop {
                             steps_left -= min_in_dir;
+                            if steps_left < *min_in_dir {
+                                break;
+                            }
+                            total_score += page.score(steps_left, steps & 1);
                         }
-                        //tracing::debug!("  final... {}", steps_left);
                         total_score += page.score(steps_left, steps & 1);
                     }
                 } else {
                     expand_generic(pos, dir, steps_left);
                 }
             };
+
+            /*
+            let mut expand_vertical = |pos, dir, mut steps_left| {
+                let (min_in_dir, border_hash, _) = page.get_border(dir);
+
+                if page_hash == *border_hash {
+                    if steps_left >= *min_in_dir {
+                        loop {
+                            steps_left -= min_in_dir;
+                            if steps_left < *min_in_dir {
+                                break;
+                            }
+                            total_score += page.score(steps_left, steps & 1);
+                        }
+                        total_score += page.score(steps_left, steps & 1);
+                    }
+                } else {
+                    expand_generic(pos, dir, steps_left);
+                }
+            }; */
 
             /*
             let mut expand_up_down = |mut pos, dir, mut steps_left| -> Option<usize> {
@@ -160,12 +178,11 @@ impl Map {
                     expand_generic(page_pos, dir, page_steps);
                 }
             } else if from_dir.y != 0 {
-                expand_sideways(page_pos, IVec2::X, page_steps);
-                expand_sideways(page_pos, -IVec2::X, page_steps);
+                expand_horizontal(page_pos, IVec2::X, page_steps);
+                expand_horizontal(page_pos, -IVec2::X, page_steps);
                 expand_generic(page_pos, from_dir, page_steps);
-                
             } else {
-                expand_sideways(page_pos, from_dir, page_steps);
+                expand_horizontal(page_pos, from_dir, page_steps);
             }
 
             cached_pages.extend(new_pages.into_iter());
@@ -321,8 +338,8 @@ pub fn test() -> (String, String) {
         format!(
             "{}/{}",
             Map::new(&map_chars, start_pos, 1).part_a(6),
-            Map::new(&map_chars, start_pos, 2).part_b(100)
+            Map::new(&map_chars, start_pos, 2).part_b(500)
         ),
-        "16/6536".into(),
+        "16/167004".into(),
     )
 }
