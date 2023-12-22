@@ -41,7 +41,7 @@ fn parse(input: &str) -> (Vec<Vec<char>>, IVec2) {
     (map_chars, start_pos)
 }
 
-type Starts = VecDeque<(u64, usize, IVec2, IVec2)>;
+type Starts = VecDeque<(u64, usize, IVec2)>;
 type Cache = FxHashMap<u64, Page>;
 type CacheItem = <Cache as IntoIterator>::Item;
 
@@ -76,68 +76,66 @@ impl Map {
         self.inside(pos) && self.grid[(pos.y * self.size + pos.x) as usize]
     }
     fn part_a(&self, steps: usize) -> usize {
-        let page = Page::new(self, &[(0, self.start_pos)], steps & 1);
+        let page = Page::new(self, &[(0, self.start_pos)], 0, steps & 1);
         page.score(steps, steps & 1)
     }
 
     fn part_b(&self, steps: usize) -> usize {
-        let mut starts: Starts = [(0, steps, IVec2::ZERO, IVec2::ZERO)]
+        let mut starts: Starts = [(0, steps, IVec2::ZERO)]
             .into_iter()
             .collect::<VecDeque<_>>();
-
-        let mut cached_pages: Cache = [(0, Page::new(self, &[(0, self.start_pos)], steps & 1))]
+        let mut cached_pages: Cache = [(0, Page::new(self, &[(0, self.start_pos)], 0, steps & 1))]
             .into_iter()
             .collect::<FxHashMap<_, _>>();
-
+        let mut current_page: Option<&Page> = None;
         let mut total_score = 0;
-        while !starts.is_empty() {
-            let (page_hash, page_steps, page_pos, from_dir) = starts.pop_front().unwrap();
 
-            let page = cached_pages.get(&page_hash).unwrap();
-            total_score += page.score(page_steps, steps & 1);
+        while !starts.is_empty() {
+            let (page_hash, page_steps, page_pos) = starts.pop_front().unwrap();
+
+            if current_page.is_none() || current_page.unwrap().hash != page_hash {
+                current_page = cached_pages.get(&page_hash);
+            }
+            total_score += current_page.unwrap().score(page_steps, steps & 1);
 
             let mut new_pages: Vec<CacheItem> = vec![];
 
-            let mut expand_generic = |pos, dir, steps_left| {
+            let mut expand = |pos, dir, steps_left| {
                 let new_pos = pos + dir;
-                let (min_in_dir, border_hash, border) = page.get_border(dir);
+                let (min_in_dir, border_hash, border) = current_page.unwrap().get_border(dir);
                 if steps_left >= *min_in_dir {
                     if !cached_pages.contains_key(border_hash) {
-                        new_pages.push((*border_hash, Page::new(self, border, steps & 1)));
+                        new_pages.push((
+                            *border_hash,
+                            Page::new(self, border, *border_hash, steps & 1),
+                        ));
                     }
-                    let new_start = (*border_hash, steps_left - min_in_dir, new_pos, dir);
-                    starts.push_back(new_start);
+                    let start = (*border_hash, steps_left - min_in_dir, new_pos);
+                    if *border_hash == page_hash {
+                        starts.push_front(start);
+                    } else {
+                        starts.push_back(start);
+                    }
                 }
             };
 
-            let mut expand_repeat = |mut pos, dir: IVec2, mut steps_left, total_score: &mut usize| {
-                let (min_in_dir, border_hash, _) = page.get_border(dir);
-                if page_hash == *border_hash {
-                    while steps_left >= *min_in_dir {
-                        steps_left -= min_in_dir;
-                        *total_score += page.score(steps_left, steps & 1);
-                        pos += dir;
-                    }
-                } else {
-                    expand_generic(pos, dir, steps_left);
-                }
-            };
-
-            if from_dir == IVec2::ZERO {
+            if page_pos == IVec2::ZERO {
                 for &dir in DIRS.iter() {
-                    expand_generic(page_pos, dir, page_steps);
+                    expand(page_pos, dir, page_steps);
                 }
-            } else if from_dir.y != 0 {
-                expand_repeat(page_pos, IVec2::X, page_steps, &mut total_score);
-                expand_repeat(page_pos, -IVec2::X, page_steps, &mut total_score);
-                expand_generic(page_pos, from_dir, page_steps);
+            } else if page_pos.x == 0 {
+                expand(page_pos, page_pos.signum(), page_steps);
+                expand(page_pos, IVec2::X, page_steps);
+                expand(page_pos, -IVec2::X, page_steps);
             } else {
-                expand_repeat(page_pos, from_dir, page_steps, &mut total_score);
+                expand(page_pos, ivec2(page_pos.x.signum(), 0), page_steps);
             }
 
-            cached_pages.extend(new_pages.into_iter());
+            if !new_pages.is_empty() {
+                current_page = None;
+                cached_pages.extend(new_pages.into_iter());
+            }
         }
-
         total_score
     }
 }
@@ -150,6 +148,7 @@ struct Page {
     max_steps: usize,
     score_at_max_steps: usize,
     borders: [Border; 4],
+    hash: u64,
 }
 
 const DIRS: [IVec2; 4] = [ivec2(1, 0), ivec2(0, 1), ivec2(-1, 0), ivec2(0, -1)];
@@ -171,7 +170,7 @@ impl Page {
                 .count()
         }
     }
-    fn new(map: &Map, starts: &[StepAndPos], odd: usize) -> Self {
+    fn new(map: &Map, starts: &[StepAndPos], hash: u64, odd: usize) -> Self {
         let mut min_steps_to_pos = vec![None; (map.size * map.size) as usize];
 
         let set = |min_steps_to_pos: &mut Vec<Option<usize>>, pos: IVec2, step: usize| {
@@ -264,6 +263,7 @@ impl Page {
             max_steps,
             score_at_max_steps,
             borders,
+            hash,
         }
     }
 }
