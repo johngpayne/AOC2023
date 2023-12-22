@@ -100,13 +100,26 @@ impl Map {
 
             let mut new_pages: Vec<CacheItem> = vec![];
 
-            let mut expand = |pos, dir, steps_left| {
+            let mut expand = |pos: IVec2, dir, steps_left: usize| {
                 let new_pos = pos + dir;
                 let (min_in_dir, border_hash, border) = current_page.unwrap().get_border(dir);
+
                 if steps_left >= *min_in_dir {
-                    let start = (*border_hash, steps_left - min_in_dir, new_pos);
                     if *border_hash == page_hash {
-                        starts.push_front(start);
+                        if pos.x != 0 {
+                            // short cut for going along using same hash each time...
+                            let mut steps_left = steps_left;
+                            loop {
+                                steps_left -= *min_in_dir;
+                                total_score += current_page.unwrap().score(steps_left, steps & 1);
+                                if steps_left < *min_in_dir {
+                                    break;
+                                }
+                            }
+                        } else {
+                            // push to front so same page next time
+                            starts.push_front((*border_hash, steps_left - min_in_dir, new_pos));
+                        }
                     } else {
                         if !cached_pages.contains_key(border_hash) {
                             new_pages.push((
@@ -114,7 +127,7 @@ impl Map {
                                 Page::new(self, border, *border_hash, steps & 1),
                             ));
                         }
-                        starts.push_back(start);
+                        starts.push_back((*border_hash, steps_left - min_in_dir, new_pos));
                     }
                 }
             };
