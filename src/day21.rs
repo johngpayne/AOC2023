@@ -104,16 +104,16 @@ impl Map {
                 let new_pos = pos + dir;
                 let (min_in_dir, border_hash, border) = current_page.unwrap().get_border(dir);
                 if steps_left >= *min_in_dir {
-                    if !cached_pages.contains_key(border_hash) {
-                        new_pages.push((
-                            *border_hash,
-                            Page::new(self, border, *border_hash, steps & 1),
-                        ));
-                    }
                     let start = (*border_hash, steps_left - min_in_dir, new_pos);
                     if *border_hash == page_hash {
                         starts.push_front(start);
                     } else {
+                        if !cached_pages.contains_key(border_hash) {
+                            new_pages.push((
+                                *border_hash,
+                                Page::new(self, border, *border_hash, steps & 1),
+                            ));
+                        }
                         starts.push_back(start);
                     }
                 }
@@ -136,6 +136,7 @@ impl Map {
                 cached_pages.extend(new_pages.into_iter());
             }
         }
+
         total_score
     }
 }
@@ -165,7 +166,7 @@ impl Page {
                 .iter()
                 .filter(|&&min_steps| match min_steps {
                     None => false,
-                    Some(min_steps) => min_steps <= steps && (min_steps % 2) == odd,
+                    Some(min_steps) => steps >= min_steps && (min_steps % 2) == odd,
                 })
                 .count()
         }
