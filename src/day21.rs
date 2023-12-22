@@ -41,6 +41,10 @@ fn parse(input: &str) -> (Vec<Vec<char>>, IVec2) {
     (map_chars, start_pos)
 }
 
+type Starts = VecDeque<(u64, usize, IVec2, IVec2)>;
+type Cache = FxHashMap<u64, Page>;
+type CacheItem = <Cache as IntoIterator>::Item;
+
 impl Map {
     fn new(map_chars: &Vec<Vec<char>>, start_pos: IVec2, mult: i32) -> Self {
         let mut size = ivec2(map_chars[0].len() as i32, map_chars.len() as i32);
@@ -77,11 +81,11 @@ impl Map {
     }
 
     fn part_b(&self, steps: usize) -> usize {
-        let mut starts = [(0, steps, IVec2::ZERO, IVec2::ZERO)]
+        let mut starts: Starts = [(0, steps, IVec2::ZERO, IVec2::ZERO)]
             .into_iter()
             .collect::<VecDeque<_>>();
 
-        let mut cached_pages = [(0, Page::new(self, &[(0, self.start_pos)], steps & 1))]
+        let mut cached_pages: Cache = [(0, Page::new(self, &[(0, self.start_pos)], steps & 1))]
             .into_iter()
             .collect::<FxHashMap<_, _>>();
 
@@ -92,7 +96,7 @@ impl Map {
             let page = cached_pages.get(&page_hash).unwrap();
             total_score += page.score(page_steps, steps & 1);
 
-            let mut new_pages: Vec<(u64, Page)> = vec![];
+            let mut new_pages: Vec<CacheItem> = vec![];
 
             let mut expand_generic = |pos, dir, steps_left| {
                 let new_pos = pos + dir;
@@ -106,83 +110,29 @@ impl Map {
                 }
             };
 
-            let mut expand_horizontal = |pos, dir, mut steps_left| {
+            let mut expand_repeat = |mut pos, dir: IVec2, mut steps_left, total_score: &mut usize| {
                 let (min_in_dir, border_hash, _) = page.get_border(dir);
-
                 if page_hash == *border_hash {
-                    if steps_left >= *min_in_dir {
-                        loop {
-                            steps_left -= min_in_dir;
-                            if steps_left < *min_in_dir {
-                                break;
-                            }
-                            total_score += page.score(steps_left, steps & 1);
-                        }
-                        total_score += page.score(steps_left, steps & 1);
+                    while steps_left >= *min_in_dir {
+                        steps_left -= min_in_dir;
+                        *total_score += page.score(steps_left, steps & 1);
+                        pos += dir;
                     }
                 } else {
                     expand_generic(pos, dir, steps_left);
                 }
             };
 
-            /*
-            let mut expand_vertical = |pos, dir, mut steps_left| {
-                let (min_in_dir, border_hash, _) = page.get_border(dir);
-
-                if page_hash == *border_hash {
-                    if steps_left >= *min_in_dir {
-                        loop {
-                            steps_left -= min_in_dir;
-                            if steps_left < *min_in_dir {
-                                break;
-                            }
-                            total_score += page.score(steps_left, steps & 1);
-                        }
-                        total_score += page.score(steps_left, steps & 1);
-                    }
-                } else {
-                    expand_generic(pos, dir, steps_left);
-                }
-            }; */
-
-            /*
-            let mut expand_up_down = |mut pos, dir, mut steps_left| -> Option<usize> {
-                //tracing::debug!("expand_repeat {pos:?} {dir:?} {steps_left} {add_sideways}");
-                let (min_in_dir, border_hash, _) = page.get_border(dir);
-
-                if page_hash == *border_hash {
-                    let mut score = 0;
-                    loop {
-                        tracing::debug!("ADDING SIDEWAYS {:?}", pos);
-                        expand_sideways(pos, IVec2::X, steps_left);
-                        expand_sideways(pos, -IVec2::X, steps_left);
-
-                        if steps_left < *min_in_dir {
-                            break;
-                        }
-                        score += page.score(steps_left, steps & 1);
-                        steps_left -= min_in_dir;
-                        pos += dir;
-                    }
-                    score += page.score(steps_left, steps & 1);
-                    Some(score)
-                } else {
-                    expand_sideways(pos, IVec2::X, steps_left);
-                    expand_sideways(pos, -IVec2::X, steps_left);
-                    None
-                }
-            }; */
-
             if from_dir == IVec2::ZERO {
                 for &dir in DIRS.iter() {
                     expand_generic(page_pos, dir, page_steps);
                 }
             } else if from_dir.y != 0 {
-                expand_horizontal(page_pos, IVec2::X, page_steps);
-                expand_horizontal(page_pos, -IVec2::X, page_steps);
+                expand_repeat(page_pos, IVec2::X, page_steps, &mut total_score);
+                expand_repeat(page_pos, -IVec2::X, page_steps, &mut total_score);
                 expand_generic(page_pos, from_dir, page_steps);
             } else {
-                expand_horizontal(page_pos, from_dir, page_steps);
+                expand_repeat(page_pos, from_dir, page_steps, &mut total_score);
             }
 
             cached_pages.extend(new_pages.into_iter());
@@ -338,8 +288,8 @@ pub fn test() -> (String, String) {
         format!(
             "{}/{}",
             Map::new(&map_chars, start_pos, 1).part_a(6),
-            Map::new(&map_chars, start_pos, 2).part_b(500)
+            Map::new(&map_chars, start_pos, 2).part_b(5000)
         ),
-        "16/167004".into(),
+        "16/16733044".into(),
     )
 }
