@@ -160,15 +160,16 @@ impl Map {
         let mut wave = VecDeque::from([(*pos_to_index.get(&self.start).unwrap(), 0usize, 0u64)]);
         let mut results = vec![];
         while !wave.is_empty() {
-            let (index, len, mut visited) = wave.pop_front().unwrap();
-
+            let (index, len, visited) = wave.pop_front().unwrap();
             if index == end_index {
                 results.push(len);
             } else {
-                visited |= 1 << index;
-                for &(to_index, to_len) in index_nodes[index as usize].iter().flatten() {
-                    if (visited & 1 << to_index) == 0 {
-                        wave.push_back((*to_index, len + to_len, visited));
+                #[allow(clippy::manual_flatten)]
+                for maybe_entry in index_nodes[index as usize].iter() {
+                    if let Some((&to_index, to_len)) = maybe_entry {
+                        if (visited & 1 << to_index) == 0 {
+                            wave.push_back((to_index, len + to_len, visited | 1 << index));
+                        }
                     }
                 }
             }
