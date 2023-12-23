@@ -155,26 +155,6 @@ impl Map {
                 }
             }
         }
-        
-        /*
-        let mut wave = VecDeque::from([(self.start, 0usize, FxHashSet::<IVec2>::default())]);
-        let mut results = vec![];
-        while !wave.is_empty() {
-            let (pos, len, mut prev) = wave.pop_front().unwrap();
-
-            if pos == self.end {
-                results.push(len);
-                continue;
-            }
-            prev.insert(pos);
-            for (to_pos, to_len) in nodes.get(&pos).unwrap().iter().flatten() {
-                if !prev.contains(to_pos) {
-                    wave.push_back((*to_pos, len + *to_len, prev.clone()));
-                }
-            }
-        }
-        */
-
         results.into_iter().max().unwrap()
     }
 }
